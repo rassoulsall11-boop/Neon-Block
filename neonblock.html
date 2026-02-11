@@ -2,121 +2,178 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON BLOCK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON WORDS - HARDCORE</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        h1 { color: #00f3ff; text-shadow: 0 0 10px #00f3ff; margin: 10px 0; }
-        #board { 
-            display: grid; 
-            grid-template-columns: repeat(8, 35px); 
-            grid-template-rows: repeat(8, 35px); 
-            gap: 2px; 
-            background: #222; 
-            padding: 5px; 
-            margin: 20px auto; 
-            width: fit-content;
-            border: 2px solid #444;
-        }
-        .cell { width: 35px; height: 35px; background: #111; border: 1px solid #333; }
-        #tray { display: flex; justify-content: center; gap: 15px; margin-top: 20px; min-height: 80px; }
-        .p-grid { border: 2px solid transparent; padding: 5px; cursor: pointer; }
-        .selected { border-color: #00f3ff; background: rgba(0, 243, 255, 0.2); }
-        .block { width: 15px; height: 15px; display: inline-block; margin: 1px; }
-        #score { font-size: 20px; color: #00ff99; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        body { background: #050505; color: white; font-family: 'Orbitron', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; touch-action: none; }
+        #ui { text-align: center; margin-bottom: 10px; }
+        #grid { display: grid; gap: 4px; background: #111; padding: 10px; border: 2px solid #333; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 243, 255, 0.2); }
+        .cell { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 1rem; border: 1px solid rgba(0, 243, 255, 0.1); }
+        .cell.selected { background: #ff0055; color: #fff; box-shadow: 0 0 15px #ff0055; transform: scale(1.1); }
+        .cell.found { background: #00ff99; color: #000; box-shadow: 0 0 10px #00ff99; border: none; }
+        #word-list { margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 90vw; }
+        .word-item { padding: 4px 8px; border: 1px solid #444; border-radius: 4px; font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .word-found { text-decoration: line-through; color: #00ff99; border-color: #00ff99; box-shadow: inset 0 0 5px #00ff99; }
+        h1 { color: #00f3ff; margin: 5px; text-shadow: 0 0 10px #00f3ff; font-size: 1.4rem; }
+        #msg { color: #ff0055; height: 20px; font-size: 0.8rem; margin-top: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>NEON BLOCK</h1>
-    <div id="score">SCORE: 0</div>
-    
-    <div id="board"></div>
-    
-    <p style="font-size: 0.8rem;">1. Clique sur une pièce | 2. Clique sur la grille</p>
-    <div id="tray"></div>
+    <div id="ui">
+        <h1>NEON WORDS</h1>
+        <div>SCORE: <span id="score">0</span> | LVL: <span id="lvl">1</span></div>
+        <div id="msg"></div>
+    </div>
+
+    <div id="grid"></div>
+
+    <div id="word-list"></div>
 
 <script>
-const SHAPES = [ [[1,1],[1,1]], [[1,1,1]], [[1],[1],[1]], [[1]], [[1,1],[1,0]] ];
-const COLORS = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
-let boardData = Array(8).fill().map(() => Array(8).fill(0));
-let selectedPiece = null;
+const DICT = ["LUNE", "SOLEIL", "GEMINI", "CODE", "ROBOT", "NEON", "GLACE", "FEU", "MONDE", "AVION", "BRACELET", "ESPACE", "VORTEX", "PLASMA", "CYBER", "TRAVERS", "ONDE", "NOIR", "TROU", "FORCE"];
+let currentWords = [];
+let foundWords = [];
+let gridSize = 8;
+let level = 1;
 let score = 0;
+let firstCell = null;
 
-function createBoard() {
-    const b = document.getElementById('board');
-    b.innerHTML = '';
-    for(let r=0; r<8; r++) {
-        for(let c=0; c<8; c++) {
+function initGame() {
+    gridSize = Math.min(8 + Math.floor(level/3), 12);
+    currentWords = [];
+    foundWords = [];
+    document.getElementById('lvl').innerText = level;
+    document.getElementById('grid').style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+    
+    let tempDict = [...DICT].sort(() => 0.5 - Math.random());
+    currentWords = tempDict.slice(0, 4 + Math.floor(level/2));
+    
+    generateGrid();
+}
+
+function generateGrid() {
+    let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
+    
+    // Les 8 directions : [y, x]
+    const dirs = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
+
+    currentWords.forEach(word => {
+        let placed = false;
+        let attempts = 0;
+        while (!placed && attempts < 100) {
+            let dir = dirs[Math.floor(Math.random() * dirs.length)];
+            let r = Math.floor(Math.random() * gridSize);
+            let c = Math.floor(Math.random() * gridSize);
+            
+            // Vérifier si le mot rentre dans cette direction
+            let canPlace = true;
+            for(let i=0; i<word.length; i++) {
+                let nr = r + i * dir[0];
+                let nc = c + i * dir[1];
+                if (nr < 0 || nr >= gridSize || nc < 0 || nc >= gridSize || (grid[nr][nc] !== '' && grid[nr][nc] !== word[i])) {
+                    canPlace = false; break;
+                }
+            }
+            
+            if (canPlace) {
+                for(let i=0; i<word.length; i++) grid[r + i * dir[0]][c + i * dir[1]] = word[i];
+                placed = true;
+            }
+            attempts++;
+        }
+    });
+
+    const gridEl = document.getElementById('grid');
+    gridEl.innerHTML = '';
+    for(let r=0; r<gridSize; r++) {
+        for(let c=0; c<gridSize; c++) {
+            if (grid[r][c] === '') grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
             let cell = document.createElement('div');
             cell.className = 'cell';
-            cell.onclick = () => handleCellClick(r, c);
-            cell.id = `r${r}c${c}`;
-            b.appendChild(cell);
+            cell.innerText = grid[r][c];
+            cell.dataset.r = r; cell.dataset.c = c;
+            cell.onclick = () => handleSelect(cell, r, c);
+            gridEl.appendChild(cell);
         }
+    }
+    updateWordList();
+}
+
+function updateWordList() {
+    const listEl = document.getElementById('word-list');
+    listEl.innerHTML = '';
+    currentWords.forEach(w => {
+        let span = document.createElement('div');
+        span.className = 'word-item' + (foundWords.includes(w) ? ' word-found' : '');
+        span.innerText = w;
+        listEl.appendChild(span);
+    });
+}
+
+function handleSelect(cell, r, c) {
+    if (cell.classList.contains('found')) return;
+
+    if (!firstCell) {
+        firstCell = { r, c, el: cell };
+        cell.classList.add('selected');
+    } else {
+        checkWord(firstCell.r, firstCell.c, r, c);
+        firstCell.el.classList.remove('selected');
+        firstCell = null;
     }
 }
 
-function spawn() {
-    const t = document.getElementById('tray');
-    t.innerHTML = '';
-    for(let i=0; i<3; i++) {
-        const s = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-        const col = COLORS[Math.floor(Math.random()*COLORS.length)];
-        const div = document.createElement('div');
-        div.className = 'p-grid';
-        div.onclick = () => {
-            document.querySelectorAll('.p-grid').forEach(el => el.classList.remove('selected'));
-            div.classList.add('selected');
-            selectedPiece = { s, col, div };
-        };
-        
-        s.forEach(row => {
-            const line = document.createElement('div');
-            row.forEach(val => {
-                const b = document.createElement('div');
-                b.className = 'block';
-                b.style.background = val ? col : 'transparent';
-                line.appendChild(b);
-            });
-            div.appendChild(line);
-        });
-        t.appendChild(div);
+function checkWord(r1, c1, r2, c2) {
+    let dr = r2 - r1;
+    let dc = c2 - c1;
+    let dist = Math.max(Math.abs(dr), Math.abs(dc));
+    
+    if (dist === 0) return;
+
+    let stepR = dr / dist;
+    let stepC = dc / dist;
+    
+    // Vérifier si c'est une ligne droite ou diagonale parfaite
+    if (Math.abs(stepR) > 1 || Math.abs(stepC) > 1 || (stepR !== 0 && stepC !== 0 && Math.abs(stepR) !== Math.abs(stepC))) {
+        errorMsg(); return;
+    }
+
+    let selectedText = "";
+    let cellsToMark = [];
+    for (let i = 0; i <= dist; i++) {
+        let row = r1 + Math.round(i * stepR);
+        let col = c1 + Math.round(i * stepC);
+        let el = document.querySelector(`[data-r="${row}"][data-c="${col}"]`);
+        selectedText += el.innerText;
+        cellsToMark.push(el);
+    }
+
+    let match = currentWords.find(w => w === selectedText && !foundWords.includes(w));
+
+    if (match) {
+        foundWords.push(match);
+        cellsToMark.forEach(el => el.classList.add('found'));
+        score += 100 * level;
+        document.getElementById('score').innerText = score;
+        document.getElementById('msg').innerText = "SYSTÈME OK !";
+        updateWordList();
+        if (foundWords.length === currentWords.length) {
+            level++;
+            setTimeout(initGame, 800);
+        }
+    } else {
+        errorMsg();
     }
 }
 
-function handleCellClick(r, c) {
-    if(!selectedPiece) return;
-    const { s, col, div } = selectedPiece;
-    
-    // Vérifier si ça passe
-    for(let i=0; i<s.length; i++) {
-        for(let j=0; j<s[i].length; j++) {
-            if(s[i][j]) {
-                if(r+i >= 8 || c+j >= 8 || boardData[r+i][c+j]) return;
-            }
-        }
-    }
-    
-    // Poser
-    for(let i=0; i<s.length; i++) {
-        for(let j=0; j<s[i].length; j++) {
-            if(s[i][j]) {
-                boardData[r+i][c+j] = col;
-                document.getElementById(`r${r+i}c${c+j}`).style.background = col;
-            }
-        }
-    }
-    
-    div.remove();
-    selectedPiece = null;
-    score += 10;
-    document.getElementById('score').innerText = "SCORE: " + score;
-    if(document.getElementById('tray').children.length === 0) spawn();
+function errorMsg() {
+    document.getElementById('msg').innerText = "ERREUR SCAN";
+    setTimeout(() => document.getElementById('msg').innerText = "", 800);
 }
 
-createBoard();
-spawn();
+initGame();
 </script>
 </body>
 </html>
