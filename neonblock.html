@@ -2,82 +2,82 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>NEON WORDS - CANVAS EDITION</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON WORDS - FIX</title>
     <style>
-        body { background: #050505; color: #00f3ff; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        canvas { border: 2px solid #333; box-shadow: 0 0 20px #00f3ff; margin-top: 20px; touch-action: none; }
-        #info { font-size: 20px; margin-top: 10px; }
+        /* On simplifie le CSS pour éviter les erreurs de chargement */
+        body { background: #000; color: #00f3ff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        canvas { border: 2px solid #00f3ff; background: #050505; touch-action: none; max-width: 100%; }
+        h1 { text-shadow: 0 0 10px #00f3ff; font-size: 1.5rem; }
     </style>
 </head>
 <body>
     <h1>NEON WORDS</h1>
-    <div id="info">SCORE: <span id="score">0</span> | MOTS: <span id="mots">...</span></div>
+    <div id="info">SCORE: <span id="score">0</span></div>
     <canvas id="gameCanvas"></canvas>
 
-<script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Paramètres
-    const gridSize = 8;
-    const cellSize = 40;
-    canvas.width = gridSize * cellSize;
-    canvas.height = gridSize * cellSize;
+    <script>
+        // CETTE FONCTION ATTEIND QUE LA PAGE SOIT PRÊTE
+        window.onload = function() {
+            const canvas = document.getElementById('gameCanvas');
+            if(!canvas) return; // Sécurité
+            
+            const ctx = canvas.getContext('2d');
+            const gridSize = 8;
+            const cellSize = 40;
+            canvas.width = gridSize * cellSize;
+            canvas.height = gridSize * cellSize;
 
-    let score = 0;
-    const words = ["LUNE", "NEON", "CODE", "GEMINI", "VORTEX"];
-    let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
-    let selected = [];
+            let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
 
-    // Remplissage simple pour le test
-    function init() {
-        // On place "LUNE" en haut à gauche pour tester
-        grid[0][0]='L'; grid[0][1]='U'; grid[0][2]='N'; grid[0][3]='E';
-        
-        // Remplir le reste avec des lettres au hasard
-        for(let r=0; r<gridSize; r++) {
-            for(let c=0; c<gridSize; c++) {
-                if(grid[r][c] === '') grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random()*26));
-            }
-        }
-        draw();
-    }
-
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "20px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        for(let r=0; r<gridSize; r++) {
-            for(let c=0; c<gridSize; c++) {
-                let x = c * cellSize + cellSize/2;
-                let y = r * cellSize + cellSize/2;
+            function init() {
+                // On place quelques lettres pour tester
+                grid[0][0]='G'; grid[0][1]='E'; grid[0][2]='M'; grid[0][3]='I'; grid[0][4]='N'; grid[0][5]='I';
                 
-                // Dessin de la cellule
-                ctx.strokeStyle = "#222";
-                ctx.strokeRect(c*cellSize, r*cellSize, cellSize, cellSize);
-                
-                // Dessin de la lettre
-                ctx.fillStyle = "#00f3ff";
-                ctx.fillText(grid[r][c], x, y);
+                for(let r=0; r<gridSize; r++) {
+                    for(let c=0; c<gridSize; c++) {
+                        if(grid[r][c] === '') grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random()*26));
+                    }
+                }
+                draw();
             }
-        }
-    }
 
-    // On utilise la même logique de clic que ton jeu d'esquive
-    canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        const col = Math.floor(mouseX / cellSize);
-        const row = Math.floor(mouseY / cellSize);
-        
-        alert("Tu as cliqué sur la lettre : " + grid[row][col]);
-    });
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = "20px Monospace";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
 
-    init();
-</script>
+                for(let r=0; r<gridSize; r++) {
+                    for(let c=0; c<gridSize; c++) {
+                        // Case
+                        ctx.strokeStyle = "#111";
+                        ctx.strokeRect(c*cellSize, r*cellSize, cellSize, cellSize);
+                        // Lettre
+                        ctx.fillStyle = "#00f3ff";
+                        ctx.fillText(grid[r][c], c*cellSize + cellSize/2, r*cellSize + cellSize/2);
+                    }
+                }
+            }
+
+            // Gestion du clic (souris et tactile)
+            function getClick(e) {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                const col = Math.floor(x / (rect.width / gridSize));
+                const row = Math.floor(y / (rect.height / gridSize));
+                
+                if(grid[row] && grid[row][col]) {
+                    alert("Lettre : " + grid[row][col]);
+                }
+            }
+
+            canvas.addEventListener('mousedown', getClick);
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); getClick(e); });
+
+            init();
+        };
+    </script>
 </body>
 </html>
