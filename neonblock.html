@@ -1,151 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>NEON BLOCK FINAL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON BLOCK</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-        body { background: #050505; color: white; font-family: 'Orbitron', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
-        #board { display: grid; grid-template-columns: repeat(8, 40px); grid-template-rows: repeat(8, 40px); gap: 4px; background: #111; padding: 10px; border: 2px solid #333; border-radius: 8px; }
-        .cell { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 4px; border: 1px solid rgba(255,255,255,0.02); }
-        #tray { display: flex; gap: 20px; margin-top: 30px; height: 100px; align-items: center; }
-        .p-block { width: 18px; height: 18px; border-radius: 2px; display: inline-block; }
-        .p-grid { display: grid; gap: 2px; cursor: grab; }
-        .dragging { position: fixed; pointer-events: none; transform: scale(1.3); z-index: 1000; }
-        #score { font-size: 24px; color: #00f3ff; margin-bottom: 10px; text-shadow: 0 0 10px #00f3ff; }
-        #init-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #050505; display: flex; align-items: center; justify-content: center; z-index: 9999; }
-        button { padding: 20px 40px; font-family: 'Orbitron'; background: #00f3ff; border: none; font-size: 20px; cursor: pointer; border-radius: 10px; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
+        h1 { color: #00f3ff; text-shadow: 0 0 10px #00f3ff; margin: 10px 0; }
+        #board { 
+            display: grid; 
+            grid-template-columns: repeat(8, 35px); 
+            grid-template-rows: repeat(8, 35px); 
+            gap: 2px; 
+            background: #222; 
+            padding: 5px; 
+            margin: 20px auto; 
+            width: fit-content;
+            border: 2px solid #444;
+        }
+        .cell { width: 35px; height: 35px; background: #111; border: 1px solid #333; }
+        #tray { display: flex; justify-content: center; gap: 15px; margin-top: 20px; min-height: 80px; }
+        .p-grid { border: 2px solid transparent; padding: 5px; cursor: pointer; }
+        .selected { border-color: #00f3ff; background: rgba(0, 243, 255, 0.2); }
+        .block { width: 15px; height: 15px; display: inline-block; margin: 1px; }
+        #score { font-size: 20px; color: #00ff99; }
     </style>
 </head>
 <body>
 
-<div id="init-screen">
-    <button onclick="startGame()">ACTIVER LE SYSTÈME</button>
-</div>
-
-<div id="score">SCORE: 0</div>
-<div id="board"></div>
-<div id="tray"></div>
+    <h1>NEON BLOCK</h1>
+    <div id="score">SCORE: 0</div>
+    
+    <div id="board"></div>
+    
+    <p style="font-size: 0.8rem;">1. Clique sur une pièce | 2. Clique sur la grille</p>
+    <div id="tray"></div>
 
 <script>
-const SHAPES = [ [[1,1],[1,1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1],[0,1,0]], [[1]] ];
+const SHAPES = [ [[1,1],[1,1]], [[1,1,1]], [[1],[1],[1]], [[1]], [[1,1],[1,0]] ];
 const COLORS = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
 let boardData = Array(8).fill().map(() => Array(8).fill(0));
+let selectedPiece = null;
 let score = 0;
 
-function startGame() {
-    document.getElementById('init-screen').style.display = 'none';
-    const boardEl = document.getElementById('board');
-    boardEl.innerHTML = '';
-    for(let i=0; i<64; i++) {
-        let c = document.createElement('div');
-        c.className = 'cell';
-        c.id = 'cell-' + i;
-        boardEl.appendChild(c);
+function createBoard() {
+    const b = document.getElementById('board');
+    b.innerHTML = '';
+    for(let r=0; r<8; r++) {
+        for(let c=0; c<8; c++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.onclick = () => handleCellClick(r, c);
+            cell.id = `r${r}c${c}`;
+            b.appendChild(cell);
+        }
     }
-    spawnPieces();
 }
 
-function spawnPieces() {
-    const tray = document.getElementById('tray');
-    tray.innerHTML = '';
+function spawn() {
+    const t = document.getElementById('tray');
+    t.innerHTML = '';
     for(let i=0; i<3; i++) {
-        const shape = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-        const color = COLORS[Math.floor(Math.random()*COLORS.length)];
-        const container = document.createElement('div');
-        container.className = 'p-grid';
-        container.style.gridTemplateColumns = `repeat(${shape[0].length}, 20px)`;
+        const s = SHAPES[Math.floor(Math.random()*SHAPES.length)];
+        const col = COLORS[Math.floor(Math.random()*COLORS.length)];
+        const div = document.createElement('div');
+        div.className = 'p-grid';
+        div.onclick = () => {
+            document.querySelectorAll('.p-grid').forEach(el => el.classList.remove('selected'));
+            div.classList.add('selected');
+            selectedPiece = { s, col, div };
+        };
         
-        shape.flat().forEach(val => {
-            const b = document.createElement('div');
-            b.className = 'p-block';
-            b.style.background = val ? color : 'transparent';
-            container.appendChild(b);
+        s.forEach(row => {
+            const line = document.createElement('div');
+            row.forEach(val => {
+                const b = document.createElement('div');
+                b.className = 'block';
+                b.style.background = val ? col : 'transparent';
+                line.appendChild(b);
+            });
+            div.appendChild(line);
         });
-        
-        container.onmousedown = (e) => handleStart(e, container, shape, color);
-        container.ontouchstart = (e) => handleStart(e, container, shape, color);
-        tray.appendChild(container);
+        t.appendChild(div);
     }
 }
 
-function handleStart(e, el, shape, color) {
-    el.classList.add('dragging');
-    const move = (event) => {
-        const x = event.touches ? event.touches[0].clientX : event.clientX;
-        const y = event.touches ? event.touches[0].clientY : event.clientY;
-        el.style.left = (x - 40) + 'px';
-        el.style.top = (y - 40) + 'px';
-    };
-    const up = (event) => {
-        el.classList.remove('dragging');
-        el.style.position = '';
-        const x = event.changedTouches ? event.changedTouches[0].clientX : event.clientX;
-        const y = event.changedTouches ? event.changedTouches[0].clientY : event.clientY;
-        const target = document.elementFromPoint(x, y);
-        if(target && target.id.startsWith('cell-')) {
-            const id = parseInt(target.id.split('-')[1]);
-            const r = Math.floor(id/8), c = id%8;
-            if(canPlace(shape, r, c)) {
-                place(shape, r, c, color);
-                el.remove();
-                if(document.getElementById('tray').children.length === 0) spawnPieces();
-            }
-        }
-        window.onmousemove = window.onmouseup = window.ontouchmove = window.ontouchend = null;
-    };
-    el.style.position = 'fixed';
-    window.onmousemove = move; window.onmouseup = up;
-    window.ontouchmove = move; window.ontouchend = up;
-}
-
-function canPlace(shape, r, c) {
-    for(let i=0; i<shape.length; i++) {
-        for(let j=0; j<shape[i].length; j++) {
-            if(shape[i][j]) {
-                if(r+i >= 8 || c+j >= 8 || boardData[r+i][c+j]) return false;
+function handleCellClick(r, c) {
+    if(!selectedPiece) return;
+    const { s, col, div } = selectedPiece;
+    
+    // Vérifier si ça passe
+    for(let i=0; i<s.length; i++) {
+        for(let j=0; j<s[i].length; j++) {
+            if(s[i][j]) {
+                if(r+i >= 8 || c+j >= 8 || boardData[r+i][c+j]) return;
             }
         }
     }
-    return true;
-}
-
-function place(shape, r, c, color) {
-    for(let i=0; i<shape.length; i++) {
-        for(let j=0; j<shape[i].length; j++) {
-            if(shape[i][j]) {
-                boardData[r+i][c+j] = color;
-                const cell = document.getElementById('cell-' + ((r+i)*8 + (c+j)));
-                cell.style.background = color;
-                cell.style.boxShadow = `0 0 10px ${color}`;
+    
+    // Poser
+    for(let i=0; i<s.length; i++) {
+        for(let j=0; j<s[i].length; j++) {
+            if(s[i][j]) {
+                boardData[r+i][c+j] = col;
+                document.getElementById(`r${r+i}c${c+j}`).style.background = col;
             }
         }
     }
+    
+    div.remove();
+    selectedPiece = null;
     score += 10;
     document.getElementById('score').innerText = "SCORE: " + score;
-    checkLines();
+    if(document.getElementById('tray').children.length === 0) spawn();
 }
 
-function checkLines() {
-    let rs = [], cs = [];
-    for(let i=0; i<8; i++) {
-        if(boardData[i].every(v => v !== 0)) rs.push(i);
-        if(boardData.map(r => r[i]).every(v => v !== 0)) cs.push(i);
-    }
-    rs.forEach(r => {
-        boardData[r].fill(0);
-        for(let c=0; c<8; c++) reset(r, c);
-    });
-    cs.forEach(c => {
-        for(let r=0; r<8; r++) { boardData[r][c] = 0; reset(r, c); }
-    });
-}
-
-function reset(r, c) {
-    const el = document.getElementById('cell-' + (r*8+c));
-    el.style.background = ''; el.style.boxShadow = '';
-}
+createBoard();
+spawn();
 </script>
 </body>
 </html>
