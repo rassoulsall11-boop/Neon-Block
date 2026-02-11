@@ -1,24 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>TEST FINAL</title>
+    <meta charset="UTF-8">
+    <title>NEON WORDS - CANVAS EDITION</title>
     <style>
-        body { background: #111; color: #0f0; text-align: center; }
-        .box { width: 50px; height: 50px; background: #333; display: inline-block; margin: 5px; border: 2px solid #0f0; }
+        body { background: #050505; color: #00f3ff; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
+        canvas { border: 2px solid #333; box-shadow: 0 0 20px #00f3ff; margin-top: 20px; touch-action: none; }
+        #info { font-size: 20px; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>TEST DE CONNEXION</h1>
-    <p>Si tu vois des carrés verts ci-dessous, le serveur fonctionne.</p>
-    <div id="test-grid">
-        <div class="box"></div><div class="box"></div><div class="box"></div>
-    </div>
-    <script>
-        // Ce script change juste la couleur du titre après 1 seconde
-        setTimeout(() => {
-            document.querySelector('h1').style.color = 'white';
-            console.log("Le script a tourné !");
-        }, 1000);
-    </script>
+    <h1>NEON WORDS</h1>
+    <div id="info">SCORE: <span id="score">0</span> | MOTS: <span id="mots">...</span></div>
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Paramètres
+    const gridSize = 8;
+    const cellSize = 40;
+    canvas.width = gridSize * cellSize;
+    canvas.height = gridSize * cellSize;
+
+    let score = 0;
+    const words = ["LUNE", "NEON", "CODE", "GEMINI", "VORTEX"];
+    let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
+    let selected = [];
+
+    // Remplissage simple pour le test
+    function init() {
+        // On place "LUNE" en haut à gauche pour tester
+        grid[0][0]='L'; grid[0][1]='U'; grid[0][2]='N'; grid[0][3]='E';
+        
+        // Remplir le reste avec des lettres au hasard
+        for(let r=0; r<gridSize; r++) {
+            for(let c=0; c<gridSize; c++) {
+                if(grid[r][c] === '') grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random()*26));
+            }
+        }
+        draw();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "20px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for(let r=0; r<gridSize; r++) {
+            for(let c=0; c<gridSize; c++) {
+                let x = c * cellSize + cellSize/2;
+                let y = r * cellSize + cellSize/2;
+                
+                // Dessin de la cellule
+                ctx.strokeStyle = "#222";
+                ctx.strokeRect(c*cellSize, r*cellSize, cellSize, cellSize);
+                
+                // Dessin de la lettre
+                ctx.fillStyle = "#00f3ff";
+                ctx.fillText(grid[r][c], x, y);
+            }
+        }
+    }
+
+    // On utilise la même logique de clic que ton jeu d'esquive
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const col = Math.floor(mouseX / cellSize);
+        const row = Math.floor(mouseY / cellSize);
+        
+        alert("Tu as cliqué sur la lettre : " + grid[row][col]);
+    });
+
+    init();
+</script>
 </body>
 </html>
