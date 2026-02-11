@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON BLOCK</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        :root {
+            --bg: #050505;
+            --grid-line: #1a1a1a;
+            --p1: #00f3ff; --p2: #ff0055; --p3: #00ff99; --p4: #ffff00; --p5: #ff00ff;
+        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; color: white; }
+        #game-container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        #score { font-size: 2rem; color: var(--p1); text-shadow: 0 0 10px var(--p1); }
+        #board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: #111; padding: 5px; border: 2px solid #333; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .cell { width: 40px; height: 40px; background: rgba(255,255,255,0.03); border-radius: 4px; transition: 0.2s; }
+        .cell.filled { box-shadow: inset 0 0 10px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
+        #pieces-tray { display: flex; gap: 20px; height: 100px; margin-top: 20px; }
+        .piece-container { cursor: grab; transition: transform 0.2s; }
+        .piece-grid { display: grid; gap: 2px; }
+        .block { width: 18px; height: 18px; border-radius: 3px; }
+        .dragging { position: fixed; pointer-events: none; transform: scale(1.5); z-index: 100; }
+        .hidden { visibility: hidden; }
+        #game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
+        button { padding: 15px 30px; font-family: 'Orbitron'; background: var(--p1); border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="score">SCORE: 0</div>
+    <div id="board"></div>
+    <div id="pieces-tray"></div>
+</div>
+
+<div id="game-over">
+    <h1>GAME OVER</h1>
+    <h2 id="final-score">0</h2>
+    <button onclick="location.reload()">REJOUER</button>
+</div>
+
+<script>
+const PIECES = [
+    { s: [[1,1],[1,1]] }, { s: [[1,1,1,1]] }, { s: [[1],[1],[1],[1]] },
+    { s: [[1,1,1],[0,1,0]] }, { s: [[1,1,1],[1,0,0]] }, { s: [[1,1],[1,0],[1,0]] },
+    { s: [[1]] }, { s: [[1,1,1],[0,0,1]] }, { s: [[1,1,0],[0,1,1]] }
+];
+let board = Array(8).fill().map(() => Array(8).fill(0));
+let score = 0;
+let colors = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
+
+function createBoard() {
+    const boardEl = document.getElementById('board');
+    for(let r=0; r<8; r++) {
+        for(let c=0; c<8; c++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `c-${r}-${c}`;
+            boardEl.appendChild(cell);
+        }
+    }
+}
+
+function spawnPieces() {
+    const tray = document.getElementById('pieces-tray');
+    tray.innerHTML = '';
+    for(let i=0; i<3; i++) {
+        let pData = PIECES[Math.floor(Math.random()*PIECES.length)];
+        let color = colors[Math.floor(Math.random()*colors.length)];
+        let container = document.createElement('div');
+        container.className = 'piece-container';
+        container.dataset.piece = JSON.stringify(pData.s);
+        container.dataset.color = color;
+        
+        let grid = document.createElement('div');
+        grid.className = 'piece-grid';
+        grid.style.gridTemplateColumns = `repeat(${pData.s[0].length}, 1fr)`;
+        
+        pData.s.forEach(row => {
+            row.forEach(b => {
+                let block = document.createElement('div');
+                block.className = 'block';
+                if(b) block.style.background = color;
+                else block.style.visibility = 'hidden';
+                grid.appendChild(block);
+            });
+        });
+        container.appendChild(grid);
+        tray.appendChild(container);
+        setupDrag(container);
+    }
+}
+
+function setupDrag(el) {
+    let startX, startY;
+    const onMove = (e) => {
+        let x = e.touches ? e.touches[0].clientX : e.clientX;
+        let y = e.touches ? e.touches[0].clientY : e.clientY;
+        el.style.left = (x - 40) + 'px';
+        el.style.top = (y - 40) + 'px';
+    };
+
+    const onEnd = (e) => {
+        el.classList.remove('dragging');
+        el.style.position = '';
+        let x = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+        let y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+        
+        const dropEl = document.elementFromPoint(x, y);
+        if(dropEl && dropEl.classList.contains('cell')) {
+            let r = parseInt(dropEl.id.split('-')[1]);
+            let c = parseInt(dropEl.id.split('-')[2]);
+            if(tryPlace(JSON.parse(el.dataset.piece), r, c, el.dataset.color)) {
+                el.remove();
+                if(document.querySelectorAll('.piece-container').length === 0) spawnPieces();
+                checkGameOver();
+            }
+        }
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onEnd);
+    };
+
+    el.addEventListener('mousedown', (e) => {
+        el.classList.add('dragging');
+        el.style.position = 'fixed';
+        onMove(e);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+    });
+
+    el.addEventListener('touchstart', (e) => {
+        el.classList.add('dragging');
+        el.style.position = 'fixed';
+        window.addEventListener('touchmove', onMove, {passive:false});
+        window.addEventListener('touchend', onEnd);
+    });
+}
+
+function tryPlace(shape, r, c, color) {
+    // Vérifier si ça rentre
+    for(let i=0; i<shape.length; i++) {
+        for(let j=0; j<shape[i].length; j++) {
+            if(shape[i][j]) {
+                if(r+i >= 8 || c+j >= 8 || board[r+i][c+j]) return false;
+            }
+        }
+    }
+    // Placer
+    for(let i=0; i<shape.length; i++) {
+        for(let j=0; j<shape[i].length; j++) {
+            if(shape[i][j]) {
+                board[r+i][c+j] = color;
+                const cell = document.getElementById(`c-${r+i}-${c+j}`);
+                cell.style.background = color;
+                cell.classList.add('filled');
+                cell.style.boxShadow = `0 0 15px ${color}`;
+            }
+        }
+    }
+    score += 10;
+    checkLines();
+    document.getElementById('score').innerText = "SCORE: " + score;
+    return true;
+}
+
+function checkLines() {
+    let toClearR = [], toClearC = [];
+    for(let i=0; i<8; i++) {
+        if(board[i].every(x => x !== 0)) toClearR.push(i);
+        if(board.map(row => row[i]).every(x => x !== 0)) toClearC.push(i);
+    }
+    toClearR.forEach(r => {
+        board[r].fill(0);
+        for(let c=0; c<8; c++) resetCell(r, c);
+        score += 100;
+    });
+    toClearC.forEach(c => {
+        for(let r=0; r<8; r++) {
+            board[r][c] = 0;
+            resetCell(r, c);
+        }
+        score += 100;
+    });
+}
+
+function resetCell(r, c) {
+    const cell = document.getElementById(`c-${r}-${c}`);
+    cell.style.background = '';
+    cell.style.boxShadow = '';
+    cell.classList.remove('filled');
+}
+
+function checkGameOver() {
+    const pieces = document.querySelectorAll('.piece-container');
+    let canPlaceAny = false;
+    pieces.forEach(p => {
+        let shape = JSON.parse(p.dataset.piece);
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                let possible = true;
+                for(let i=0; i<shape.length; i++) {
+                    for(let j=0; j<shape[i].length; j++) {
+                        if(shape[i][j] && (r+i >= 8 || c+j >= 8 || board[r+i][c+j])) possible = false;
+                    }
+                }
+                if(possible) canPlaceAny = true;
+            }
+        }
+    });
+    if(!canPlaceAny && pieces.length > 0) {
+        document.getElementById('game-over').style.display = 'flex';
+        document.getElementById('final-score').innerText = score;
+    }
+}
+
+createBoard();
+spawnPieces();
+</script>
+</body>
+</html>
