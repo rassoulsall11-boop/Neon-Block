@@ -1,136 +1,106 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON BLOCK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NEON BLOCK FINAL</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-        :root { --bg: #050505; --p1: #00f3ff; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; color: white; }
-        #game-container { display: flex; flex-direction: column; align-items: center; gap: 20px; z-index: 10; }
-        #score { font-size: 1.8rem; color: var(--p1); text-shadow: 0 0 10px var(--p1); }
-        #board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; background: #111; padding: 8px; border: 2px solid #333; border-radius: 8px; }
-        .cell { width: 35px; height: 35px; background: rgba(255,255,255,0.05); border-radius: 3px; }
-        .cell.filled { box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
-        #pieces-tray { display: flex; gap: 15px; height: 110px; margin-top: 20px; align-items: center; justify-content: center; width: 100%; }
-        .piece-container { cursor: grab; padding: 5px; }
-        .piece-grid { display: grid; gap: 2px; }
-        .block { width: 18px; height: 18px; border-radius: 2px; }
-        .dragging { position: fixed; pointer-events: none; transform: scale(1.4); z-index: 1000; opacity: 0.8; }
-        #game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
-        button { padding: 12px 25px; font-family: 'Orbitron'; background: var(--p1); border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+        body { background: #050505; color: white; font-family: 'Orbitron', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
+        #board { display: grid; grid-template-columns: repeat(8, 40px); grid-template-rows: repeat(8, 40px); gap: 4px; background: #111; padding: 10px; border: 2px solid #333; border-radius: 8px; }
+        .cell { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 4px; border: 1px solid rgba(255,255,255,0.02); }
+        #tray { display: flex; gap: 20px; margin-top: 30px; height: 100px; align-items: center; }
+        .p-block { width: 18px; height: 18px; border-radius: 2px; display: inline-block; }
+        .p-grid { display: grid; gap: 2px; cursor: grab; }
+        .dragging { position: fixed; pointer-events: none; transform: scale(1.3); z-index: 1000; }
+        #score { font-size: 24px; color: #00f3ff; margin-bottom: 10px; text-shadow: 0 0 10px #00f3ff; }
+        #init-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #050505; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        button { padding: 20px 40px; font-family: 'Orbitron'; background: #00f3ff; border: none; font-size: 20px; cursor: pointer; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="score">SCORE: 0</div>
-    <div id="board"></div>
-    <div id="pieces-tray"></div>
+<div id="init-screen">
+    <button onclick="startGame()">ACTIVER LE SYSTÈME</button>
 </div>
 
-<div id="game-over">
-    <h1>GAME OVER</h1>
-    <h2 id="final-score">0</h2>
-    <button onclick="location.reload()">REESSAYER</button>
-</div>
+<div id="score">SCORE: 0</div>
+<div id="board"></div>
+<div id="tray"></div>
 
 <script>
-const PIECES = [
-    { s: [[1,1],[1,1]] }, { s: [[1,1,1,1]] }, { s: [[1],[1],[1],[1]] },
-    { s: [[1,1,1],[0,1,0]] }, { s: [[1,1,1],[1,0,0]] }, { s: [[1]] },
-    { s: [[1,1,1],[0,0,1]] }, { s: [[1,1,0],[0,1,1]] }, { s: [[1,1],[1,1],[1,1]] }
-];
+const SHAPES = [ [[1,1],[1,1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1],[0,1,0]], [[1]] ];
+const COLORS = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
 let boardData = Array(8).fill().map(() => Array(8).fill(0));
-let scoreValue = 0;
-const colorList = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
+let score = 0;
 
-function init() {
-    const b = document.getElementById('board');
-    b.innerHTML = '';
-    for(let r=0; r<8; r++) {
-        for(let c=0; c<8; c++) {
-            let cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.id = `c-${r}-${c}`;
-            b.appendChild(cell);
-        }
+function startGame() {
+    document.getElementById('init-screen').style.display = 'none';
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    for(let i=0; i<64; i++) {
+        let c = document.createElement('div');
+        c.className = 'cell';
+        c.id = 'cell-' + i;
+        boardEl.appendChild(c);
     }
-    spawnNext();
+    spawnPieces();
 }
 
-function spawnNext() {
-    const tray = document.getElementById('pieces-tray');
+function spawnPieces() {
+    const tray = document.getElementById('tray');
     tray.innerHTML = '';
     for(let i=0; i<3; i++) {
-        const p = PIECES[Math.floor(Math.random()*PIECES.length)];
-        const col = colorList[Math.floor(Math.random()*colorList.length)];
+        const shape = SHAPES[Math.floor(Math.random()*SHAPES.length)];
+        const color = COLORS[Math.floor(Math.random()*COLORS.length)];
         const container = document.createElement('div');
-        container.className = 'piece-container';
-        container.dataset.shape = JSON.stringify(p.s);
-        container.dataset.color = col;
+        container.className = 'p-grid';
+        container.style.gridTemplateColumns = `repeat(${shape[0].length}, 20px)`;
         
-        const grid = document.createElement('div');
-        grid.className = 'piece-grid';
-        grid.style.gridTemplateColumns = `repeat(${p.s[0].length}, 1fr)`;
-        
-        p.s.forEach(row => {
-            row.forEach(val => {
-                const b = document.createElement('div');
-                b.className = 'block';
-                if(val) b.style.background = col;
-                else b.style.visibility = 'hidden';
-                grid.appendChild(b);
-            });
+        shape.flat().forEach(val => {
+            const b = document.createElement('div');
+            b.className = 'p-block';
+            b.style.background = val ? color : 'transparent';
+            container.appendChild(b);
         });
-        container.appendChild(grid);
+        
+        container.onmousedown = (e) => handleStart(e, container, shape, color);
+        container.ontouchstart = (e) => handleStart(e, container, shape, color);
         tray.appendChild(container);
-        addDrag(container);
     }
 }
 
-function addDrag(el) {
-    const move = (e) => {
-        const x = (e.touches ? e.touches[0].clientX : e.clientX);
-        const y = (e.touches ? e.touches[0].clientY : e.clientY);
-        el.style.left = (x - 30) + 'px';
-        el.style.top = (y - 30) + 'px';
+function handleStart(e, el, shape, color) {
+    el.classList.add('dragging');
+    const move = (event) => {
+        const x = event.touches ? event.touches[0].clientX : event.clientX;
+        const y = event.touches ? event.touches[0].clientY : event.clientY;
+        el.style.left = (x - 40) + 'px';
+        el.style.top = (y - 40) + 'px';
     };
-    const end = (e) => {
+    const up = (event) => {
         el.classList.remove('dragging');
         el.style.position = '';
-        const x = (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
-        const y = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
+        const x = event.changedTouches ? event.changedTouches[0].clientX : event.clientX;
+        const y = event.changedTouches ? event.changedTouches[0].clientY : event.clientY;
         const target = document.elementFromPoint(x, y);
-        if(target && target.classList.contains('cell')) {
-            const r = parseInt(target.id.split('-')[1]);
-            const c = parseInt(target.id.split('-')[2]);
-            if(place(JSON.parse(el.dataset.shape), r, c, el.dataset.color)) {
+        if(target && target.id.startsWith('cell-')) {
+            const id = parseInt(target.id.split('-')[1]);
+            const r = Math.floor(id/8), c = id%8;
+            if(canPlace(shape, r, c)) {
+                place(shape, r, c, color);
                 el.remove();
-                if(document.querySelectorAll('.piece-container').length === 0) spawnNext();
-                checkLoss();
+                if(document.getElementById('tray').children.length === 0) spawnPieces();
             }
         }
-        window.removeEventListener('mousemove', move);
-        window.removeEventListener('mouseup', end);
-        window.removeEventListener('touchmove', move);
-        window.removeEventListener('touchend', end);
+        window.onmousemove = window.onmouseup = window.ontouchmove = window.ontouchend = null;
     };
-    const start = (e) => {
-        el.classList.add('dragging');
-        el.style.position = 'fixed';
-        move(e);
-        window.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', end);
-        window.addEventListener('touchmove', move, {passive:false});
-        window.addEventListener('touchend', end);
-    };
-    el.addEventListener('mousedown', start);
-    el.addEventListener('touchstart', start);
+    el.style.position = 'fixed';
+    window.onmousemove = move; window.onmouseup = up;
+    window.ontouchmove = move; window.ontouchend = up;
 }
 
-function place(shape, r, c, col) {
+function canPlace(shape, r, c) {
     for(let i=0; i<shape.length; i++) {
         for(let j=0; j<shape[i].length; j++) {
             if(shape[i][j]) {
@@ -138,70 +108,44 @@ function place(shape, r, c, col) {
             }
         }
     }
-    for(let i=0; i<shape.length; i++) {
-        for(let j=0; j<shape[i].length; j++) {
-            if(shape[i][j]) {
-                boardData[r+i][c+j] = col;
-                const cell = document.getElementById(`c-${r+i}-${c+j}`);
-                cell.style.background = col;
-                cell.classList.add('filled');
-                cell.style.boxShadow = `0 0 10px ${col}`;
-            }
-        }
-    }
-    scoreValue += 10;
-    lines();
-    document.getElementById('score').innerText = "SCORE: " + scoreValue;
     return true;
 }
 
-function lines() {
-    let rows = [], cols = [];
-    for(let i=0; i<8; i++) {
-        if(boardData[i].every(v => v !== 0)) rows.push(i);
-        if(boardData.map(r => r[i]).every(v => v !== 0)) cols.push(i);
-    }
-    rows.forEach(r => {
-        boardData[r].fill(0);
-        for(let c=0; c<8; c++) clear(r, c);
-        scoreValue += 100;
-    });
-    cols.forEach(c => {
-        for(let r=0; r<8; r++) { boardData[r][c] = 0; clear(r, c); }
-        scoreValue += 100;
-    });
-}
-
-function clear(r, c) {
-    const el = document.getElementById(`c-${r}-${c}`);
-    el.style.background = '';
-    el.style.boxShadow = '';
-    el.classList.remove('filled');
-}
-
-function checkLoss() {
-    const pieces = document.querySelectorAll('.piece-container');
-    let possible = false;
-    pieces.forEach(p => {
-        const s = JSON.parse(p.dataset.shape);
-        for(let r=0; r<8; r++) {
-            for(let c=0; c<8; c++) {
-                let fit = true;
-                for(let i=0; i<s.length; i++) {
-                    for(let j=0; j<s[i].length; j++) {
-                        if(s[i][j] && (r+i >= 8 || c+j >= 8 || boardData[r+i][c+j])) fit = false;
-                    }
-                }
-                if(fit) possible = true;
+function place(shape, r, c, color) {
+    for(let i=0; i<shape.length; i++) {
+        for(let j=0; j<shape[i].length; j++) {
+            if(shape[i][j]) {
+                boardData[r+i][c+j] = color;
+                const cell = document.getElementById('cell-' + ((r+i)*8 + (c+j)));
+                cell.style.background = color;
+                cell.style.boxShadow = `0 0 10px ${color}`;
             }
         }
-    });
-    if(!possible && pieces.length > 0) {
-        document.getElementById('game-over').style.display = 'flex';
-        document.getElementById('final-score').innerText = scoreValue;
     }
+    score += 10;
+    document.getElementById('score').innerText = "SCORE: " + score;
+    checkLines();
 }
-init();
+
+function checkLines() {
+    let rs = [], cs = [];
+    for(let i=0; i<8; i++) {
+        if(boardData[i].every(v => v !== 0)) rs.push(i);
+        if(boardData.map(r => r[i]).every(v => v !== 0)) cs.push(i);
+    }
+    rs.forEach(r => {
+        boardData[r].fill(0);
+        for(let c=0; c<8; c++) reset(r, c);
+    });
+    cs.forEach(c => {
+        for(let r=0; r<8; r++) { boardData[r][c] = 0; reset(r, c); }
+    });
+}
+
+function reset(r, c) {
+    const el = document.getElementById('cell-' + (r*8+c));
+    el.style.background = ''; el.style.boxShadow = '';
+}
 </script>
 </body>
 </html>
