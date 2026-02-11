@@ -2,82 +2,169 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON WORDS - FIX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON WORDS: HARDCORE</title>
     <style>
-        /* On simplifie le CSS pour éviter les erreurs de chargement */
-        body { background: #000; color: #00f3ff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
-        canvas { border: 2px solid #00f3ff; background: #050505; touch-action: none; max-width: 100%; }
-        h1 { text-shadow: 0 0 10px #00f3ff; font-size: 1.5rem; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        :root { --primary: #00f3ff; --secondary: #ff0055; --bg: #050505; --ui-font: 'Orbitron', sans-serif; }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg); font-family: var(--ui-font); }
+        #game-container { position: relative; width: 100%; height: 100%; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+        .hud-top { display: flex; justify-content: space-between; font-size: 1.2rem; color: white; z-index: 10; }
+        .hud-score span { color: var(--primary); font-weight: 700; }
+        #word-target { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; text-align: center; width: 100%; }
+        #main-menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 5, 0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; }
+        .hidden { display: none !important; }
+        h1 { font-size: 2.5rem; color: white; text-align: center; margin: 0; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; letter-spacing: 4px; }
+        button { margin-top: 30px; padding: 15px 40px; font-size: 1.2rem; font-family: var(--ui-font); color: var(--bg); background: var(--primary); border: none; clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%); cursor: pointer; font-weight: 900; }
     </style>
 </head>
 <body>
-    <h1>NEON WORDS</h1>
-    <div id="info">SCORE: <span id="score">0</span></div>
-    <canvas id="gameCanvas"></canvas>
 
-    <script>
-        // CETTE FONCTION ATTEIND QUE LA PAGE SOIT PRÊTE
-        window.onload = function() {
-            const canvas = document.getElementById('gameCanvas');
-            if(!canvas) return; // Sécurité
-            
-            const ctx = canvas.getContext('2d');
-            const gridSize = 8;
-            const cellSize = 40;
-            canvas.width = gridSize * cellSize;
-            canvas.height = gridSize * cellSize;
+<div id="game-container">
+    <canvas id="render-canvas"></canvas>
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div class="hud-score">SCORE: <span id="score-display">0</span></div>
+        </div>
+        <div id="word-target">
+            <div style="font-size: 0.8rem; color: #888;">TROUVE LE MOT :</div>
+            <div id="current-word-display" style="font-size: 2rem; color: var(--primary); font-weight: 900;">---</div>
+        </div>
+    </div>
+    <div id="main-menu">
+        <h1>NEON SEARCH</h1>
+        <button id="start-btn">Initialiser Scan</button>
+    </div>
+</div>
 
-            let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
+<script>
+const DICT = ["LUNE", "GEMINI", "VORTEX", "PLASMA", "CODE", "ROBOT", "NEON", "ONDE", "FORCE", "CYBER"];
 
-            function init() {
-                // On place quelques lettres pour tester
-                grid[0][0]='G'; grid[0][1]='E'; grid[0][2]='M'; grid[0][3]='I'; grid[0][4]='N'; grid[0][5]='I';
-                
-                for(let r=0; r<gridSize; r++) {
-                    for(let c=0; c<gridSize; c++) {
-                        if(grid[r][c] === '') grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random()*26));
-                    }
-                }
-                draw();
-            }
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('render-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.gridSize = 8;
+        this.grid = [];
+        this.score = 0;
+        this.targetWord = "";
+        this.selection = [];
+        this.init();
+    }
 
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.font = "20px Monospace";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-
-                for(let r=0; r<gridSize; r++) {
-                    for(let c=0; c<gridSize; c++) {
-                        // Case
-                        ctx.strokeStyle = "#111";
-                        ctx.strokeRect(c*cellSize, r*cellSize, cellSize, cellSize);
-                        // Lettre
-                        ctx.fillStyle = "#00f3ff";
-                        ctx.fillText(grid[r][c], c*cellSize + cellSize/2, r*cellSize + cellSize/2);
-                    }
-                }
-            }
-
-            // Gestion du clic (souris et tactile)
-            function getClick(e) {
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches[0].clientX) - rect.left;
-                const y = (e.clientY || e.touches[0].clientY) - rect.top;
-                const col = Math.floor(x / (rect.width / gridSize));
-                const row = Math.floor(y / (rect.height / gridSize));
-                
-                if(grid[row] && grid[row][col]) {
-                    alert("Lettre : " + grid[row][col]);
-                }
-            }
-
-            canvas.addEventListener('mousedown', getClick);
-            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); getClick(e); });
-
-            init();
+    init() {
+        window.addEventListener('resize', () => this.resize());
+        this.resize();
+        
+        const input = (e) => {
+            const touch = e.touches ? e.touches[0] : e;
+            this.handleInput(touch.clientX, touch.clientY);
         };
-    </script>
+        
+        this.canvas.addEventListener('mousedown', input);
+        this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); input(e); });
+        
+        document.getElementById('start-btn').onclick = () => this.start();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.cellSize = Math.min(this.canvas.width, this.canvas.height) / (this.gridSize + 2);
+        this.offsetX = (this.canvas.width - (this.gridSize * this.cellSize)) / 2;
+        this.offsetY = (this.canvas.height - (this.gridSize * this.cellSize)) / 2;
+    }
+
+    start() {
+        this.score = 0;
+        document.getElementById('main-menu').classList.add('hidden');
+        this.generateLevel();
+    }
+
+    generateLevel() {
+        this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(''));
+        this.targetWord = DICT[Math.floor(Math.random() * DICT.length)];
+        document.getElementById('current-word-display').innerText = this.targetWord;
+        this.selection = [];
+
+        // Placer le mot cible au hasard (H ou V)
+        const vertical = Math.random() > 0.5;
+        const r = Math.floor(Math.random() * (this.gridSize - (vertical ? this.targetWord.length : 0)));
+        const c = Math.floor(Math.random() * (this.gridSize - (vertical ? 0 : this.targetWord.length)));
+
+        for (let i = 0; i < this.targetWord.length; i++) {
+            this.grid[r + (vertical ? i : 0)][c + (vertical ? 0 : i)] = this.targetWord[i];
+        }
+
+        // Remplir le reste
+        for(let i=0; i<this.gridSize; i++) {
+            for(let j=0; j<this.gridSize; j++) {
+                if(this.grid[i][j] === '') this.grid[i][j] = String.fromCharCode(65 + Math.floor(Math.random()*26));
+            }
+        }
+    }
+
+    handleInput(ix, iy) {
+        const c = Math.floor((ix - this.offsetX) / this.cellSize);
+        const r = Math.floor((iy - this.offsetY) / this.cellSize);
+
+        if (r >= 0 && r < this.gridSize && c >= 0 && c < this.gridSize) {
+            const letter = this.grid[r][c];
+            this.selection.push({r, c, letter});
+            
+            // Vérifier si on a trouvé le mot
+            let currentString = this.selection.map(s => s.letter).join('');
+            if (currentString === this.targetWord) {
+                this.score += 100;
+                document.getElementById('score-display').innerText = this.score;
+                this.generateLevel();
+            } else if (!this.targetWord.startsWith(currentString)) {
+                this.selection = []; // Reset si erreur
+            }
+        }
+    }
+
+    loop(t) {
+        this.draw();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    draw() {
+        this.ctx.fillStyle = '#050505';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        for (let r = 0; r < this.gridSize; r++) {
+            for (let c = 0; c < this.gridSize; c++) {
+                const x = this.offsetX + c * this.cellSize;
+                const y = this.offsetY + r * this.cellSize;
+
+                // Case
+                this.ctx.strokeStyle = '#222';
+                this.ctx.strokeRect(x, y, this.cellSize, this.cellSize);
+
+                // Highlight sélection
+                const isSelected = this.selection.some(s => s.r === r && s.c === c);
+                if (isSelected) {
+                    this.ctx.fillStyle = 'rgba(0, 243, 255, 0.2)';
+                    this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
+                }
+
+                // Lettre
+                this.ctx.fillStyle = isSelected ? '#fff' : '#444';
+                this.ctx.font = `bold ${this.cellSize/2}px Orbitron`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(this.grid[r][c], x + this.cellSize/2, y + this.cellSize/2);
+            }
+        }
+    }
+}
+
+new Game();
+</script>
 </body>
 </html>
