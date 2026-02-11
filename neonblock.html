@@ -6,25 +6,20 @@
     <title>NEON BLOCK</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-        :root {
-            --bg: #050505;
-            --grid-line: #1a1a1a;
-            --p1: #00f3ff; --p2: #ff0055; --p3: #00ff99; --p4: #ffff00; --p5: #ff00ff;
-        }
+        :root { --bg: #050505; --p1: #00f3ff; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; color: white; }
-        #game-container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-        #score { font-size: 2rem; color: var(--p1); text-shadow: 0 0 10px var(--p1); }
-        #board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: #111; padding: 5px; border: 2px solid #333; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .cell { width: 40px; height: 40px; background: rgba(255,255,255,0.03); border-radius: 4px; transition: 0.2s; }
-        .cell.filled { box-shadow: inset 0 0 10px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
-        #pieces-tray { display: flex; gap: 20px; height: 100px; margin-top: 20px; }
-        .piece-container { cursor: grab; transition: transform 0.2s; }
+        #game-container { display: flex; flex-direction: column; align-items: center; gap: 20px; z-index: 10; }
+        #score { font-size: 1.8rem; color: var(--p1); text-shadow: 0 0 10px var(--p1); }
+        #board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; background: #111; padding: 8px; border: 2px solid #333; border-radius: 8px; }
+        .cell { width: 35px; height: 35px; background: rgba(255,255,255,0.05); border-radius: 3px; }
+        .cell.filled { box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+        #pieces-tray { display: flex; gap: 15px; height: 110px; margin-top: 20px; align-items: center; justify-content: center; width: 100%; }
+        .piece-container { cursor: grab; padding: 5px; }
         .piece-grid { display: grid; gap: 2px; }
-        .block { width: 18px; height: 18px; border-radius: 3px; }
-        .dragging { position: fixed; pointer-events: none; transform: scale(1.5); z-index: 100; }
-        .hidden { visibility: hidden; }
-        #game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
-        button { padding: 15px 30px; font-family: 'Orbitron'; background: var(--p1); border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+        .block { width: 18px; height: 18px; border-radius: 2px; }
+        .dragging { position: fixed; pointer-events: none; transform: scale(1.4); z-index: 1000; opacity: 0.8; }
+        #game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+        button { padding: 12px 25px; font-family: 'Orbitron'; background: var(--p1); border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -38,187 +33,175 @@
 <div id="game-over">
     <h1>GAME OVER</h1>
     <h2 id="final-score">0</h2>
-    <button onclick="location.reload()">REJOUER</button>
+    <button onclick="location.reload()">REESSAYER</button>
 </div>
 
 <script>
 const PIECES = [
     { s: [[1,1],[1,1]] }, { s: [[1,1,1,1]] }, { s: [[1],[1],[1],[1]] },
-    { s: [[1,1,1],[0,1,0]] }, { s: [[1,1,1],[1,0,0]] }, { s: [[1,1],[1,0],[1,0]] },
-    { s: [[1]] }, { s: [[1,1,1],[0,0,1]] }, { s: [[1,1,0],[0,1,1]] }
+    { s: [[1,1,1],[0,1,0]] }, { s: [[1,1,1],[1,0,0]] }, { s: [[1]] },
+    { s: [[1,1,1],[0,0,1]] }, { s: [[1,1,0],[0,1,1]] }, { s: [[1,1],[1,1],[1,1]] }
 ];
-let board = Array(8).fill().map(() => Array(8).fill(0));
-let score = 0;
-let colors = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
+let boardData = Array(8).fill().map(() => Array(8).fill(0));
+let scoreValue = 0;
+const colorList = ['#00f3ff', '#ff0055', '#00ff99', '#ffff00', '#ff00ff'];
 
-function createBoard() {
-    const boardEl = document.getElementById('board');
+function init() {
+    const b = document.getElementById('board');
+    b.innerHTML = '';
     for(let r=0; r<8; r++) {
         for(let c=0; c<8; c++) {
             let cell = document.createElement('div');
             cell.className = 'cell';
             cell.id = `c-${r}-${c}`;
-            boardEl.appendChild(cell);
+            b.appendChild(cell);
         }
     }
+    spawnNext();
 }
 
-function spawnPieces() {
+function spawnNext() {
     const tray = document.getElementById('pieces-tray');
     tray.innerHTML = '';
     for(let i=0; i<3; i++) {
-        let pData = PIECES[Math.floor(Math.random()*PIECES.length)];
-        let color = colors[Math.floor(Math.random()*colors.length)];
-        let container = document.createElement('div');
+        const p = PIECES[Math.floor(Math.random()*PIECES.length)];
+        const col = colorList[Math.floor(Math.random()*colorList.length)];
+        const container = document.createElement('div');
         container.className = 'piece-container';
-        container.dataset.piece = JSON.stringify(pData.s);
-        container.dataset.color = color;
+        container.dataset.shape = JSON.stringify(p.s);
+        container.dataset.color = col;
         
-        let grid = document.createElement('div');
+        const grid = document.createElement('div');
         grid.className = 'piece-grid';
-        grid.style.gridTemplateColumns = `repeat(${pData.s[0].length}, 1fr)`;
+        grid.style.gridTemplateColumns = `repeat(${p.s[0].length}, 1fr)`;
         
-        pData.s.forEach(row => {
-            row.forEach(b => {
-                let block = document.createElement('div');
-                block.className = 'block';
-                if(b) block.style.background = color;
-                else block.style.visibility = 'hidden';
-                grid.appendChild(block);
+        p.s.forEach(row => {
+            row.forEach(val => {
+                const b = document.createElement('div');
+                b.className = 'block';
+                if(val) b.style.background = col;
+                else b.style.visibility = 'hidden';
+                grid.appendChild(b);
             });
         });
         container.appendChild(grid);
         tray.appendChild(container);
-        setupDrag(container);
+        addDrag(container);
     }
 }
 
-function setupDrag(el) {
-    let startX, startY;
-    const onMove = (e) => {
-        let x = e.touches ? e.touches[0].clientX : e.clientX;
-        let y = e.touches ? e.touches[0].clientY : e.clientY;
-        el.style.left = (x - 40) + 'px';
-        el.style.top = (y - 40) + 'px';
+function addDrag(el) {
+    const move = (e) => {
+        const x = (e.touches ? e.touches[0].clientX : e.clientX);
+        const y = (e.touches ? e.touches[0].clientY : e.clientY);
+        el.style.left = (x - 30) + 'px';
+        el.style.top = (y - 30) + 'px';
     };
-
-    const onEnd = (e) => {
+    const end = (e) => {
         el.classList.remove('dragging');
         el.style.position = '';
-        let x = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-        let y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-        
-        const dropEl = document.elementFromPoint(x, y);
-        if(dropEl && dropEl.classList.contains('cell')) {
-            let r = parseInt(dropEl.id.split('-')[1]);
-            let c = parseInt(dropEl.id.split('-')[2]);
-            if(tryPlace(JSON.parse(el.dataset.piece), r, c, el.dataset.color)) {
+        const x = (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+        const y = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
+        const target = document.elementFromPoint(x, y);
+        if(target && target.classList.contains('cell')) {
+            const r = parseInt(target.id.split('-')[1]);
+            const c = parseInt(target.id.split('-')[2]);
+            if(place(JSON.parse(el.dataset.shape), r, c, el.dataset.color)) {
                 el.remove();
-                if(document.querySelectorAll('.piece-container').length === 0) spawnPieces();
-                checkGameOver();
+                if(document.querySelectorAll('.piece-container').length === 0) spawnNext();
+                checkLoss();
             }
         }
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onEnd);
-        window.removeEventListener('touchmove', onMove);
-        window.removeEventListener('touchend', onEnd);
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', end);
+        window.removeEventListener('touchmove', move);
+        window.removeEventListener('touchend', end);
     };
-
-    el.addEventListener('mousedown', (e) => {
+    const start = (e) => {
         el.classList.add('dragging');
         el.style.position = 'fixed';
-        onMove(e);
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onEnd);
-    });
-
-    el.addEventListener('touchstart', (e) => {
-        el.classList.add('dragging');
-        el.style.position = 'fixed';
-        window.addEventListener('touchmove', onMove, {passive:false});
-        window.addEventListener('touchend', onEnd);
-    });
+        move(e);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        window.addEventListener('touchmove', move, {passive:false});
+        window.addEventListener('touchend', end);
+    };
+    el.addEventListener('mousedown', start);
+    el.addEventListener('touchstart', start);
 }
 
-function tryPlace(shape, r, c, color) {
-    // Vérifier si ça rentre
+function place(shape, r, c, col) {
     for(let i=0; i<shape.length; i++) {
         for(let j=0; j<shape[i].length; j++) {
             if(shape[i][j]) {
-                if(r+i >= 8 || c+j >= 8 || board[r+i][c+j]) return false;
+                if(r+i >= 8 || c+j >= 8 || boardData[r+i][c+j]) return false;
             }
         }
     }
-    // Placer
     for(let i=0; i<shape.length; i++) {
         for(let j=0; j<shape[i].length; j++) {
             if(shape[i][j]) {
-                board[r+i][c+j] = color;
+                boardData[r+i][c+j] = col;
                 const cell = document.getElementById(`c-${r+i}-${c+j}`);
-                cell.style.background = color;
+                cell.style.background = col;
                 cell.classList.add('filled');
-                cell.style.boxShadow = `0 0 15px ${color}`;
+                cell.style.boxShadow = `0 0 10px ${col}`;
             }
         }
     }
-    score += 10;
-    checkLines();
-    document.getElementById('score').innerText = "SCORE: " + score;
+    scoreValue += 10;
+    lines();
+    document.getElementById('score').innerText = "SCORE: " + scoreValue;
     return true;
 }
 
-function checkLines() {
-    let toClearR = [], toClearC = [];
+function lines() {
+    let rows = [], cols = [];
     for(let i=0; i<8; i++) {
-        if(board[i].every(x => x !== 0)) toClearR.push(i);
-        if(board.map(row => row[i]).every(x => x !== 0)) toClearC.push(i);
+        if(boardData[i].every(v => v !== 0)) rows.push(i);
+        if(boardData.map(r => r[i]).every(v => v !== 0)) cols.push(i);
     }
-    toClearR.forEach(r => {
-        board[r].fill(0);
-        for(let c=0; c<8; c++) resetCell(r, c);
-        score += 100;
+    rows.forEach(r => {
+        boardData[r].fill(0);
+        for(let c=0; c<8; c++) clear(r, c);
+        scoreValue += 100;
     });
-    toClearC.forEach(c => {
-        for(let r=0; r<8; r++) {
-            board[r][c] = 0;
-            resetCell(r, c);
-        }
-        score += 100;
+    cols.forEach(c => {
+        for(let r=0; r<8; r++) { boardData[r][c] = 0; clear(r, c); }
+        scoreValue += 100;
     });
 }
 
-function resetCell(r, c) {
-    const cell = document.getElementById(`c-${r}-${c}`);
-    cell.style.background = '';
-    cell.style.boxShadow = '';
-    cell.classList.remove('filled');
+function clear(r, c) {
+    const el = document.getElementById(`c-${r}-${c}`);
+    el.style.background = '';
+    el.style.boxShadow = '';
+    el.classList.remove('filled');
 }
 
-function checkGameOver() {
+function checkLoss() {
     const pieces = document.querySelectorAll('.piece-container');
-    let canPlaceAny = false;
+    let possible = false;
     pieces.forEach(p => {
-        let shape = JSON.parse(p.dataset.piece);
+        const s = JSON.parse(p.dataset.shape);
         for(let r=0; r<8; r++) {
             for(let c=0; c<8; c++) {
-                let possible = true;
-                for(let i=0; i<shape.length; i++) {
-                    for(let j=0; j<shape[i].length; j++) {
-                        if(shape[i][j] && (r+i >= 8 || c+j >= 8 || board[r+i][c+j])) possible = false;
+                let fit = true;
+                for(let i=0; i<s.length; i++) {
+                    for(let j=0; j<s[i].length; j++) {
+                        if(s[i][j] && (r+i >= 8 || c+j >= 8 || boardData[r+i][c+j])) fit = false;
                     }
                 }
-                if(possible) canPlaceAny = true;
+                if(fit) possible = true;
             }
         }
     });
-    if(!canPlaceAny && pieces.length > 0) {
+    if(!possible && pieces.length > 0) {
         document.getElementById('game-over').style.display = 'flex';
-        document.getElementById('final-score').innerText = score;
+        document.getElementById('final-score').innerText = scoreValue;
     }
 }
-
-createBoard();
-spawnPieces();
+init();
 </script>
 </body>
 </html>
