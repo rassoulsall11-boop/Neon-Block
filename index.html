@@ -1,1119 +1,131 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Omni-Kernel OS v1.0</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    background: #0a0e1a;
-    color: #c8d6f0;
-    height: 100vh;
-    overflow: hidden;
-    user-select: none;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sall-Tech Industries | Omni-Kernel Terminal</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #00ff41;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
 
-  /* ── Desktop ── */
-  #desktop {
-    width: 100vw;
-    height: 100vh;
-    position: relative;
-    background: #0a0e1a;
-    overflow: hidden;
-  }
+        #terminal {
+            width: 80%;
+            height: 60%;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff41;
+            box-shadow: 0 0 20px #00ff4133;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
 
-  /* Animated background grid */
-  #bg-canvas {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    opacity: 0.15;
-    pointer-events: none;
-  }
+        .header {
+            color: #00ff41;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 10px;
+        }
 
-  /* ── Taskbar ── */
-  #taskbar {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 42px;
-    background: rgba(10,14,26,0.97);
-    border-top: 0.5px solid rgba(100,160,255,0.2);
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    gap: 8px;
-    z-index: 100;
-  }
-  #app-menu-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    background: rgba(52,100,200,0.25);
-    border: 0.5px solid rgba(52,100,200,0.4);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    color: #7eb8ff;
-    transition: all 0.15s;
-  }
-  #app-menu-btn:hover { background: rgba(52,100,200,0.4); }
-  .taskbar-sep {
-    width: 0.5px; height: 22px;
-    background: rgba(100,160,255,0.15);
-    margin: 0 4px;
-  }
-  .taskbar-app {
-    padding: 4px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 11px;
-    color: #7eb8ff;
-    border: 0.5px solid transparent;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .taskbar-app:hover { background: rgba(52,100,200,0.2); border-color: rgba(52,100,200,0.3); }
-  .taskbar-app.active { background: rgba(52,100,200,0.3); border-color: rgba(52,100,200,0.5); }
-  #sys-indicators {
-    display: flex; gap: 8px; align-items: center; margin-right: 8px;
-  }
-  .indicator {
-    font-size: 10px;
-    color: rgba(100,200,100,0.8);
-    display: flex; align-items: center; gap: 3px;
-  }
-  .indicator.warn { color: rgba(255,180,50,0.8); }
-  .ind-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: currentColor;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  #clock-area {
-    margin-left: auto;
-    display: flex; flex-direction: column; align-items: flex-end;
-    font-size: 11px; color: #7eb8ff;
-  }
+        .output {
+            flex-grow: 1;
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
 
-  /* ── Desktop icons ── */
-  .desk-icon {
-    position: absolute;
-    display: flex; flex-direction: column;
-    align-items: center; gap: 5px;
-    cursor: pointer;
-    padding: 8px 6px;
-    border-radius: 8px;
-    border: 0.5px solid transparent;
-    transition: all 0.15s;
-    width: 76px;
-  }
-  .desk-icon:hover { background: rgba(52,100,200,0.15); border-color: rgba(52,100,200,0.25); }
-  .desk-icon:active { transform: scale(0.95); }
-  .icon-img {
-    width: 36px; height: 36px;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  .icon-label { font-size: 10px; color: #c8d6f0; text-align: center; text-shadow: 0 1px 4px rgba(0,0,0,0.8); line-height: 1.3; }
+        .input-line {
+            display: flex;
+        }
 
-  /* ── Windows ── */
-  .window {
-    position: absolute;
-    background: rgba(12,18,32,0.97);
-    border: 0.5px solid rgba(100,160,255,0.25);
-    border-radius: 10px;
-    overflow: hidden;
-    display: none;
-    min-width: 300px; min-height: 200px;
-  }
-  .window.active-win {
-    display: flex; flex-direction: column;
-    z-index: 50;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-  }
-  .win-titlebar {
-    display: flex; align-items: center;
-    padding: 8px 12px;
-    background: rgba(20,30,55,0.9);
-    border-bottom: 0.5px solid rgba(100,160,255,0.15);
-    gap: 8px;
-    cursor: move;
-    flex-shrink: 0;
-  }
-  .win-btns { display: flex; gap: 5px; }
-  .win-btn {
-    width: 11px; height: 11px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .win-btn.close  { background: #ff5f57; }
-  .win-btn.min    { background: #ffbd2e; }
-  .win-btn.max    { background: #27c93f; }
-  .win-btn:hover  { opacity: 0.85; }
-  .win-btn.close::after { content: '×'; font-size: 10px; line-height: 11px; color: rgba(0,0,0,0); font-weight: 700; display: flex; align-items: center; justify-content: center; height: 100%; }
-  .win-btn.close:hover::after { color: rgba(80,0,0,0.8); }
-  .win-title {
-    font-size: 11px; color: #7eb8ff;
-    flex: 1; text-align: center;
-    margin-right: 32px;
-  }
-  .win-body { flex: 1; overflow: auto; padding: 0; }
+        .prompt {
+            color: #00ff41;
+            margin-right: 10px;
+        }
 
-  /* ── Terminal ── */
-  #terminal-win { width: 680px; height: 400px; left: 100px; top: 50px; }
-  #term-output {
-    padding: 12px;
-    font-size: 12px; line-height: 1.6;
-    min-height: 280px; color: #b0d0a0;
-  }
-  .term-line    { margin-bottom: 2px; }
-  .term-prompt  { color: #5580ff; }
-  .term-cmd     { color: #c8f0a0; }
-  .term-result  { color: #88aad0; }
-  .term-error   { color: #ff6060; }
-  .term-ok      { color: #60d060; }
-  .term-info    { color: #60b0ff; }
-  #term-input-row {
-    display: flex; align-items: center;
-    padding: 6px 12px;
-    border-top: 0.5px solid rgba(100,160,255,0.1);
-    background: rgba(10,14,26,0.5);
-    flex-shrink: 0;
-  }
-  #term-prompt-display { color: #5580ff; font-size: 12px; white-space: nowrap; }
-  #term-input {
-    flex: 1; background: transparent; border: none; outline: none;
-    color: #c8f0a0; font-family: inherit; font-size: 12px;
-    margin-left: 6px; caret-color: #c8f0a0;
-  }
+        input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            outline: none;
+            flex-grow: 1;
+        }
 
-  /* ── File Manager ── */
-  #files-win { width: 600px; height: 400px; left: 140px; top: 70px; }
-  .files-toolbar {
-    display: flex; gap: 6px; padding: 8px 12px;
-    border-bottom: 0.5px solid rgba(100,160,255,0.1);
-    align-items: center; flex-shrink: 0;
-  }
-  .files-navbtn {
-    padding: 3px 8px;
-    background: rgba(52,100,200,0.15);
-    border: 0.5px solid rgba(52,100,200,0.25);
-    border-radius: 4px; cursor: pointer;
-    font-size: 11px; color: #7eb8ff;
-  }
-  .files-path {
-    flex: 1;
-    background: rgba(255,255,255,0.05);
-    border: 0.5px solid rgba(100,160,255,0.15);
-    border-radius: 4px; padding: 3px 8px;
-    font-size: 11px; color: #c8d6f0;
-  }
-  .files-layout { display: flex; height: calc(100% - 44px); }
-  .files-sidebar {
-    width: 130px;
-    border-right: 0.5px solid rgba(100,160,255,0.1);
-    padding: 8px 0; flex-shrink: 0; overflow-y: auto;
-  }
-  .sidebar-item {
-    padding: 5px 12px; font-size: 11px; cursor: pointer;
-    color: #88a8d0; display: flex; align-items: center; gap: 6px;
-    border-radius: 4px; margin: 1px 4px;
-  }
-  .sidebar-item:hover, .sidebar-item.active { background: rgba(52,100,200,0.2); color: #b0d0f0; }
-  .files-grid {
-    flex: 1; padding: 12px;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(80px,1fr));
-    gap: 8px; align-content: start; overflow-y: auto;
-  }
-  .file-item {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 4px; padding: 8px 4px; border-radius: 6px; cursor: pointer;
-    border: 0.5px solid transparent; transition: all 0.12s;
-  }
-  .file-item:hover { background: rgba(52,100,200,0.15); border-color: rgba(52,100,200,0.25); }
-  .file-icon { font-size: 26px; }
-  .file-name { font-size: 10px; color: #a0c0e0; text-align: center; line-height: 1.3; word-break: break-word; }
+        .cursor {
+            color: #00ff41;
+            animation: blink 1s infinite;
+        }
 
-  /* ── System Monitor ── */
-  #monitor-win { width: 520px; height: 380px; left: 220px; top: 90px; }
-  .monitor-body { padding: 12px; }
-  .monitor-section { margin-bottom: 14px; }
-  .monitor-label {
-    font-size: 10px; color: #5580ff;
-    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
-  }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .bar-label { font-size: 11px; color: #88a8d0; width: 90px; flex-shrink: 0; }
-  .bar-track {
-    flex: 1; height: 8px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px; overflow: hidden;
-    border: 0.5px solid rgba(100,160,255,0.1);
-  }
-  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
-  .bar-val { font-size: 10px; color: #88a8d0; width: 36px; text-align: right; }
-  .proc-table { width: 100%; font-size: 10px; }
-  .proc-table th {
-    color: #5580ff; text-align: left;
-    padding: 3px 6px; border-bottom: 0.5px solid rgba(100,160,255,0.15);
-  }
-  .proc-table td { color: #88a8d0; padding: 3px 6px; }
-  .proc-table tr:hover td { color: #c8d6f0; background: rgba(52,100,200,0.1); }
-
-  /* ── Text Editor ── */
-  #editor-win { width: 560px; height: 400px; left: 160px; top: 60px; }
-  #editor-content {
-    width: 100%; height: 100%;
-    background: transparent; border: none; outline: none;
-    color: #c8d6f0; font-family: inherit; font-size: 12px;
-    padding: 12px; resize: none; line-height: 1.7;
-  }
-
-  /* ── Settings ── */
-  #settings-win { width: 540px; height: 400px; left: 180px; top: 80px; }
-  .settings-layout { display: flex; height: 100%; }
-  .settings-nav {
-    width: 145px;
-    border-right: 0.5px solid rgba(100,160,255,0.1);
-    padding: 8px 0;
-  }
-  .settings-nav-item {
-    padding: 9px 14px; font-size: 11px; cursor: pointer;
-    color: #88a8d0; display: flex; align-items: center; gap: 8px;
-  }
-  .settings-nav-item:hover, .settings-nav-item.active { background: rgba(52,100,200,0.2); color: #b0d0f0; }
-  .settings-panel { flex: 1; padding: 16px; overflow-y: auto; }
-  .setting-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 0.5px solid rgba(100,160,255,0.07);
-  }
-  .setting-info  { font-size: 12px; color: #c8d6f0; }
-  .setting-sub   { font-size: 10px; color: #5568a0; margin-top: 2px; }
-  .toggle {
-    width: 36px; height: 20px;
-    background: rgba(52,100,200,0.4);
-    border-radius: 10px; position: relative;
-    cursor: pointer; border: 0.5px solid rgba(52,100,200,0.5);
-    transition: background 0.2s; flex-shrink: 0;
-  }
-  .toggle.on { background: rgba(52,180,100,0.5); border-color: rgba(52,180,100,0.6); }
-  .toggle::after {
-    content: '';
-    position: absolute;
-    width: 14px; height: 14px;
-    border-radius: 50%; background: #fff;
-    top: 2px; left: 2px; transition: left 0.2s;
-  }
-  .toggle.on::after { left: 20px; }
-
-  /* ── Notifications ── */
-  #notif-area {
-    position: fixed; top: 12px; right: 12px;
-    display: flex; flex-direction: column; gap: 6px;
-    z-index: 200; pointer-events: none;
-  }
-  .notif {
-    background: rgba(20,30,55,0.97);
-    border: 0.5px solid rgba(100,160,255,0.25);
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 11px; color: #c8d6f0;
-    max-width: 270px;
-    animation: slideIn 0.3s ease;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    transition: opacity 0.5s;
-  }
-  .notif-title { color: #7eb8ff; font-weight: 500; margin-bottom: 3px; }
-  .notif-body  { color: #88a8d0; line-height: 1.4; }
-  @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
-
-  /* ── App menu ── */
-  #app-menu {
-    position: absolute; bottom: 46px; left: 8px;
-    background: rgba(12,18,32,0.98);
-    border: 0.5px solid rgba(100,160,255,0.25);
-    border-radius: 10px; width: 270px;
-    padding: 10px; display: none; z-index: 150;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
-  }
-  #app-menu.open { display: block; }
-  .menu-search {
-    width: 100%;
-    background: rgba(255,255,255,0.05);
-    border: 0.5px solid rgba(100,160,255,0.2);
-    border-radius: 6px; padding: 6px 10px;
-    font-size: 12px; color: #c8d6f0;
-    outline: none; font-family: inherit; margin-bottom: 10px;
-  }
-  .menu-section-title {
-    font-size: 9px; color: #4460a0;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    margin: 8px 0 4px;
-  }
-  .menu-app {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 8px; border-radius: 6px;
-    cursor: pointer; transition: background 0.12s;
-  }
-  .menu-app:hover { background: rgba(52,100,200,0.2); }
-  .menu-app-icon {
-    width: 28px; height: 28px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; flex-shrink: 0;
-  }
-  .menu-app-name { font-size: 12px; color: #c8d6f0; }
-  .menu-app-desc { font-size: 10px; color: #5568a0; }
-</style>
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
 </head>
 <body>
-<div id="desktop">
-  <canvas id="bg-canvas"></canvas>
 
-  <!-- ═══ Desktop Icons ═══ -->
-  <div class="desk-icon" style="top:30px;left:20px"   onclick="openApp('terminal')">
-    <div class="icon-img" style="background:rgba(30,60,100,0.5);border:0.5px solid rgba(52,100,200,0.3)">⬛</div>
-    <div class="icon-label">Terminal</div>
-  </div>
-  <div class="desk-icon" style="top:120px;left:20px"  onclick="openApp('files')">
-    <div class="icon-img" style="background:rgba(40,60,30,0.5);border:0.5px solid rgba(50,150,80,0.3)">📁</div>
-    <div class="icon-label">Fichiers</div>
-  </div>
-  <div class="desk-icon" style="top:210px;left:20px"  onclick="openApp('monitor')">
-    <div class="icon-img" style="background:rgba(60,30,80,0.5);border:0.5px solid rgba(120,60,200,0.3)">📊</div>
-    <div class="icon-label">Moniteur</div>
-  </div>
-  <div class="desk-icon" style="top:300px;left:20px"  onclick="openApp('editor')">
-    <div class="icon-img" style="background:rgba(60,50,20,0.5);border:0.5px solid rgba(200,150,30,0.3)">📝</div>
-    <div class="icon-label">Éditeur</div>
-  </div>
-  <div class="desk-icon" style="top:390px;left:20px"  onclick="openApp('settings')">
-    <div class="icon-img" style="background:rgba(30,50,70,0.5);border:0.5px solid rgba(100,150,200,0.3)">⚙️</div>
-    <div class="icon-label">Paramètres</div>
-  </div>
-
-  <!-- ═══ Terminal Window ═══ -->
-  <div class="window" id="terminal-win">
-    <div class="win-titlebar" onmousedown="startDrag(event,'terminal-win')">
-      <div class="win-btns">
-        <div class="win-btn close" onclick="closeWin('terminal-win')"></div>
-        <div class="win-btn min"></div>
-        <div class="win-btn max"></div>
-      </div>
-      <div class="win-title">Terminal — omni-kernel v1.0</div>
+<div id="terminal">
+    <div class="header">
+=======================================================
+  OMNI-KERNEL v5.5 (SALL-TECH INDUSTRIES - WEB PORT)
+  STATUS: MULTITASKING_PREEMPT_ACTIVE
+=======================================================
     </div>
-    <div class="win-body" style="display:flex;flex-direction:column;height:100%">
-      <div id="term-output" style="flex:1;overflow-y:auto"></div>
-      <div id="term-input-row">
-        <span id="term-prompt-display">root@omni-kernel:~$</span>
-        <input type="text" id="term-input" placeholder="tapez une commande..." autocomplete="off" />
-      </div>
+    <div id="output" class="output">Bienvenue dans l'interface de contrôle Neon-Block.
+Tapez 'help' pour voir les commandes disponibles.</div>
+    <div class="input-line">
+        <span class="prompt">Sall-Tech ></span>
+        <input type="text" id="commandInput" autofocus>
     </div>
-  </div>
-
-  <!-- ═══ File Manager Window ═══ -->
-  <div class="window" id="files-win">
-    <div class="win-titlebar" onmousedown="startDrag(event,'files-win')">
-      <div class="win-btns">
-        <div class="win-btn close" onclick="closeWin('files-win')"></div>
-        <div class="win-btn min"></div>
-        <div class="win-btn max"></div>
-      </div>
-      <div class="win-title">Gestionnaire de Fichiers</div>
-    </div>
-    <div class="win-body" style="height:100%;display:flex;flex-direction:column">
-      <div class="files-toolbar">
-        <div class="files-navbtn" onclick="filesNav(-1)">←</div>
-        <div class="files-navbtn" onclick="filesNav(1)">→</div>
-        <div class="files-path" id="files-path">/home/user</div>
-        <div class="files-navbtn" onclick="filesHome()">⌂</div>
-      </div>
-      <div class="files-layout">
-        <div class="files-sidebar">
-          <div class="sidebar-item active" onclick="filesGoto('/home/user')">🏠 Home</div>
-          <div class="sidebar-item" onclick="filesGoto('/home/user/documents')">📄 Documents</div>
-          <div class="sidebar-item" onclick="filesGoto('/home/user/images')">🖼️ Images</div>
-          <div class="sidebar-item" onclick="filesGoto('/home/user/musique')">🎵 Musique</div>
-          <div class="sidebar-item" onclick="filesGoto('/dev')">⚙️ /dev</div>
-          <div class="sidebar-item" onclick="filesGoto('/etc')">🔧 /etc</div>
-          <div class="sidebar-item" onclick="filesGoto('/var/log')">📋 Logs</div>
-        </div>
-        <div class="files-grid" id="files-grid"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ System Monitor Window ═══ -->
-  <div class="window" id="monitor-win">
-    <div class="win-titlebar" onmousedown="startDrag(event,'monitor-win')">
-      <div class="win-btns">
-        <div class="win-btn close" onclick="closeWin('monitor-win')"></div>
-        <div class="win-btn min"></div>
-        <div class="win-btn max"></div>
-      </div>
-      <div class="win-title">Moniteur Système — Omni-Kernel</div>
-    </div>
-    <div class="win-body" style="overflow-y:auto">
-      <div class="monitor-body">
-        <div class="monitor-section">
-          <div class="monitor-label">Modules Noyau (Micro-Kernel)</div>
-          <div id="cpu-bars"></div>
-        </div>
-        <div class="monitor-section">
-          <div class="monitor-label">Mémoire &amp; Swap</div>
-          <div id="mem-bars"></div>
-        </div>
-        <div class="monitor-section">
-          <div class="monitor-label">Processus Isolés (Sandboxed)</div>
-          <table class="proc-table">
-            <thead>
-              <tr>
-                <th>PID</th><th>Nom</th><th>Sandbox</th>
-                <th>CPU%</th><th>MEM</th><th>Statut</th>
-              </tr>
-            </thead>
-            <tbody id="proc-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ Text Editor Window ═══ -->
-  <div class="window" id="editor-win">
-    <div class="win-titlebar" onmousedown="startDrag(event,'editor-win')">
-      <div class="win-btns">
-        <div class="win-btn close" onclick="closeWin('editor-win')"></div>
-        <div class="win-btn min"></div>
-        <div class="win-btn max"></div>
-      </div>
-      <div class="win-title">Éditeur — nouveau_fichier.rs</div>
-    </div>
-    <div class="win-body" style="height:100%">
-      <textarea id="editor-content" spellcheck="false">// Omni-Kernel — Module Noyau (Rust)
-// Formellement vérifié, zéro UB garanti
-
-#![no_std]
-#![deny(unsafe_code)]
-
-use core::sync::atomic::{AtomicU64, Ordering};
-use omni_kernel::memory::{IsolatedHeap, SecureAllocator};
-use omni_kernel::crypto::{StreamCipher, AES256_GCM};
-
-/// Contexte de processus isolé (sandboxé)
-#[derive(Debug, Clone)]
-pub struct SandboxContext {
-    pid: u32,
-    heap: IsolatedHeap,
-    cipher: AES256_GCM,
-    capabilities: Capabilities,
-}
-
-impl SandboxContext {
-    /// Crée un nouveau contexte isolé
-    /// Preuve: mémoire jamais accessible depuis l'extérieur
-    pub fn new(pid: u32) -> Result&lt;Self, KernelError&gt; {
-        let heap = IsolatedHeap::allocate(4096)?;
-        let cipher = AES256_GCM::generate_key();
-        Ok(Self {
-            pid,
-            heap,
-            cipher,
-            capabilities: Capabilities::minimal(),
-        })
-    }
-
-    /// Chiffrement du flux mémoire CPU↔RAM
-    pub fn encrypt_memory_bus(&amp;self, data: &amp;[u8]) -&gt; Vec&lt;u8&gt; {
-        self.cipher.encrypt(data)
-    }
-}
-
-// Module Pare-feu IA (analyse paquets)
-pub mod ai_firewall {
-    pub fn analyze_packet(packet: &amp;[u8]) -&gt; ThreatLevel {
-        let entropy = compute_entropy(packet);
-        let pattern = match_threat_db(packet);
-        ThreatLevel::assess(entropy, pattern)
-    }
-}
-</textarea>
-    </div>
-  </div>
-
-  <!-- ═══ Settings Window ═══ -->
-  <div class="window" id="settings-win">
-    <div class="win-titlebar" onmousedown="startDrag(event,'settings-win')">
-      <div class="win-btns">
-        <div class="win-btn close" onclick="closeWin('settings-win')"></div>
-        <div class="win-btn min"></div>
-        <div class="win-btn max"></div>
-      </div>
-      <div class="win-title">Paramètres Système</div>
-    </div>
-    <div class="win-body" style="height:100%">
-      <div class="settings-layout">
-        <div class="settings-nav">
-          <div class="settings-nav-item active" onclick="setPanel('security')">🔒 Sécurité</div>
-          <div class="settings-nav-item" onclick="setPanel('kernel')">⚙️ Noyau</div>
-          <div class="settings-nav-item" onclick="setPanel('energy')">⚡ Énergie</div>
-          <div class="settings-nav-item" onclick="setPanel('display')">🖥️ Affichage</div>
-          <div class="settings-nav-item" onclick="setPanel('network')">🌐 Réseau</div>
-          <div class="settings-nav-item" onclick="setPanel('updates')">🔄 Mises à jour</div>
-        </div>
-        <div class="settings-panel" id="settings-panel"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ Taskbar ═══ -->
-  <div id="taskbar">
-    <div id="app-menu-btn" onclick="toggleMenu()">
-      <span style="font-size:14px">◈</span>
-      <span>Omni-Kernel</span>
-    </div>
-    <div class="taskbar-sep"></div>
-    <div id="taskbar-apps" style="display:flex;gap:4px"></div>
-    <div id="sys-indicators">
-      <div class="indicator"><div class="ind-dot"></div><span id="ind-cpu">CPU 12%</span></div>
-      <div class="indicator"><div class="ind-dot"></div><span id="ind-mem">RAM 1.2G</span></div>
-      <div class="indicator warn"><div class="ind-dot"></div><span>ZFS</span></div>
-    </div>
-    <div id="clock-area">
-      <span id="clock-time" style="font-size:12px;color:#7eb8ff"></span>
-      <span id="clock-date" style="font-size:10px;color:#4460a0"></span>
-    </div>
-  </div>
-
-  <!-- ═══ App Menu ═══ -->
-  <div id="app-menu">
-    <input class="menu-search" type="text" placeholder="Rechercher une application..." />
-    <div class="menu-section-title">Système</div>
-    <div class="menu-app" onclick="openApp('terminal');toggleMenu()">
-      <div class="menu-app-icon" style="background:rgba(30,60,100,0.5)">⬛</div>
-      <div><div class="menu-app-name">Terminal</div><div class="menu-app-desc">Shell sécurisé</div></div>
-    </div>
-    <div class="menu-app" onclick="openApp('files');toggleMenu()">
-      <div class="menu-app-icon" style="background:rgba(40,60,30,0.5)">📁</div>
-      <div><div class="menu-app-name">Fichiers</div><div class="menu-app-desc">Système immuable ZFS</div></div>
-    </div>
-    <div class="menu-app" onclick="openApp('monitor');toggleMenu()">
-      <div class="menu-app-icon" style="background:rgba(60,30,80,0.5)">📊</div>
-      <div><div class="menu-app-name">Moniteur</div><div class="menu-app-desc">Processus &amp; ressources</div></div>
-    </div>
-    <div class="menu-section-title">Outils</div>
-    <div class="menu-app" onclick="openApp('editor');toggleMenu()">
-      <div class="menu-app-icon" style="background:rgba(60,50,20,0.5)">📝</div>
-      <div><div class="menu-app-name">Éditeur</div><div class="menu-app-desc">Code Rust / Ada</div></div>
-    </div>
-    <div class="menu-app" onclick="openApp('settings');toggleMenu()">
-      <div class="menu-app-icon" style="background:rgba(30,50,70,0.5)">⚙️</div>
-      <div><div class="menu-app-name">Paramètres</div><div class="menu-app-desc">Configuration noyau</div></div>
-    </div>
-  </div>
-
-  <!-- ═══ Notification Area ═══ -->
-  <div id="notif-area"></div>
 </div>
 
 <script>
-/* ════════════════════════════════════════
-   BACKGROUND CANVAS (grid)
-════════════════════════════════════════ */
-const canvas = document.getElementById('bg-canvas');
-const ctx    = canvas.getContext('2d');
+    const input = document.getElementById('commandInput');
+    const output = document.getElementById('output');
 
-function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-  drawGrid();
-}
+    const commands = {
+        'help': "Commandes disponibles : sysinfo, nexus, extraction, neon, clear",
+        'sysinfo': "Omni-Kernel v5.5 | Arch: x86_64 | Memory: Virtualized | Status: Stable",
+        'nexus': "[NEXUS AI] Liaison établie. Analyse des blocs néon en cours...",
+        'extraction': "[ALERTE] Déconnexion du monde virtuel amorcée...",
+        'neon': "Redirection vers Neon-Block... (Simulation)",
+        'clear': "Effacer"
+    };
 
-function drawGrid() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = 'rgba(52,100,200,0.12)';
-  ctx.lineWidth = 0.5;
-  const sz = 40;
-  for (let x = 0; x < canvas.width;  x += sz) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-  for (let y = 0; y < canvas.height; y += sz) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(52,100,200,0.3)';
-  for (let x = 0; x < canvas.width;  x += sz)
-    for (let y = 0; y < canvas.height; y += sz) {
-      ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI*2); ctx.fill();
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const cmd = input.value.toLowerCase().trim();
+            printOutput(`\nSall-Tech > ${cmd}`);
+
+            if (cmd === 'clear') {
+                output.innerText = "";
+            } else if (commands[cmd]) {
+                printOutput(commands[cmd]);
+            } else if (cmd !== "") {
+                printOutput(`Erreur : Commande '${cmd}' inconnue.`);
+            }
+
+            input.value = "";
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    });
+
+    function printOutput(text) {
+        output.innerText += "\n" + text;
+        const terminal = document.getElementById('terminal');
+        terminal.scrollTop = terminal.scrollHeight;
     }
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-/* ════════════════════════════════════════
-   CLOCK
-════════════════════════════════════════ */
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock-time').textContent =
-    now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  document.getElementById('clock-date').textContent =
-    now.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'short' });
-}
-updateClock();
-setInterval(updateClock, 1000);
-
-/* ════════════════════════════════════════
-   WINDOW MANAGEMENT
-════════════════════════════════════════ */
-let openWindows = {};
-let zCounter    = 10;
-
-const WIN_LABELS = {
-  terminal : 'Terminal',
-  files    : 'Fichiers',
-  monitor  : 'Moniteur',
-  editor   : 'Éditeur',
-  settings : 'Paramètres',
-};
-
-function openApp(name) {
-  const win = document.getElementById(name + '-win');
-  if (!win) return;
-  win.classList.add('active-win');
-  win.style.zIndex = ++zCounter;
-  openWindows[name] = true;
-  updateTaskbar();
-  if (name === 'terminal' && !document.getElementById('term-output').innerHTML) initTerminal();
-  if (name === 'files')    renderFiles('/home/user');
-  if (name === 'monitor')  initMonitor();
-  if (name === 'settings') renderSettings('security');
-}
-
-function closeWin(winId) {
-  const win = document.getElementById(winId);
-  if (!win) return;
-  win.classList.remove('active-win');
-  delete openWindows[winId.replace('-win', '')];
-  updateTaskbar();
-}
-
-function focusWin(winId) {
-  const win = document.getElementById(winId);
-  if (win) win.style.zIndex = ++zCounter;
-}
-
-function updateTaskbar() {
-  const ta = document.getElementById('taskbar-apps');
-  ta.innerHTML = '';
-  for (const [k] of Object.entries(openWindows)) {
-    const el = document.createElement('div');
-    el.className   = 'taskbar-app active';
-    el.textContent = WIN_LABELS[k] || k;
-    el.onclick     = () => focusWin(k + '-win');
-    ta.appendChild(el);
-  }
-}
-
-/* ════════════════════════════════════════
-   DRAG
-════════════════════════════════════════ */
-let dragState = null;
-
-function startDrag(e, winId) {
-  const win  = document.getElementById(winId);
-  win.style.zIndex = ++zCounter;
-  const rect = win.getBoundingClientRect();
-  dragState  = { winId, ox: e.clientX - rect.left, oy: e.clientY - rect.top };
-  document.addEventListener('mousemove', onDrag);
-  document.addEventListener('mouseup',   stopDrag);
-}
-function onDrag(e) {
-  if (!dragState) return;
-  const win = document.getElementById(dragState.winId);
-  let x = e.clientX - dragState.ox;
-  let y = e.clientY - dragState.oy;
-  x = Math.max(0, Math.min(x, window.innerWidth  - 200));
-  y = Math.max(0, Math.min(y, window.innerHeight - 60));
-  win.style.left = x + 'px';
-  win.style.top  = y + 'px';
-}
-function stopDrag() {
-  dragState = null;
-  document.removeEventListener('mousemove', onDrag);
-  document.removeEventListener('mouseup',   stopDrag);
-}
-
-/* ════════════════════════════════════════
-   APP MENU
-════════════════════════════════════════ */
-function toggleMenu() {
-  document.getElementById('app-menu').classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#app-menu') && !e.target.closest('#app-menu-btn'))
-    document.getElementById('app-menu').classList.remove('open');
-});
-
-/* ════════════════════════════════════════
-   TERMINAL
-════════════════════════════════════════ */
-const termCmds = {
-  'help': () => [
-    '<span class="term-info">Commandes disponibles :</span>',
-    '<span class="term-result">  help, ls, pwd, uname, ps, df, uptime, clear, whoami</span>',
-    '<span class="term-result">  neofetch, kernel, sandbox, update, encrypt</span>',
-    '<span class="term-result">  cat /etc/omni-kernel.conf</span>',
-  ],
-  'ls': () => [
-    '<span class="term-result">Documents/  Images/  Musique/  .config/  .local/  .bashrc  README.md  kernel.log</span>',
-  ],
-  'pwd': () => ['<span class="term-result">/home/user</span>'],
-  'whoami': () => ['<span class="term-result">user (uid=1000, sandbox: active, trust: none)</span>'],
-  'uname': () => ['<span class="term-result">Omni-Kernel 1.0.0-verified #1 SMP PREEMPT_RT Rust/Ada x86_64</span>'],
-  'uptime': () => [
-    `<span class="term-result"> ${Math.floor(Math.random()*99+1)} jours, ${Math.floor(Math.random()*23)}:${String(Math.floor(Math.random()*59)).padStart(2,'0')} | charge: 0.${Math.floor(Math.random()*15)} 0.${Math.floor(Math.random()*10)} 0.0${Math.floor(Math.random()*9)}</span>`,
-  ],
-  'ps': () => [
-    '<span class="term-info">PID  NOM                  CPU%  MEM   SANDBOX</span>',
-    '<span class="term-result">  1  omni-init             0.0   12M   kernel</span>',
-    '<span class="term-result">100  wayland-compositor    1.2  180M   isolated</span>',
-    '<span class="term-result">201  omni-terminal         0.3   48M   isolated</span>',
-    '<span class="term-result">312  ai-firewall           0.8   64M   kernel-ext</span>',
-    '<span class="term-result">405  zfs-daemon            0.1   32M   isolated</span>',
-    '<span class="term-result">506  audio-server          0.2   20M   isolated</span>',
-  ],
-  'df': () => [
-    '<span class="term-info">Système          Taille  Utilisé  Dispo  Usage%</span>',
-    '<span class="term-result">omni-root (ZFS)    50G      8.2G    42G    16%   [READ-ONLY]</span>',
-    '<span class="term-result">/home (ZFS)       200G     42G    158G    21%   [encrypted]</span>',
-    '<span class="term-result">tmpfs              16G      1.2G    15G     7%</span>',
-  ],
-  'clear': () => { document.getElementById('term-output').innerHTML = ''; return []; },
-  'kernel': () => [
-    '<span class="term-info">═══ Omni-Kernel Micro-Noyau ═══</span>',
-    '<span class="term-result">  Architecture: Micro-Noyau formellement vérifié</span>',
-    '<span class="term-result">  Langage:      Rust 2024 + preuves Coq</span>',
-    '<span class="term-result">  Isolation:    Zéro Trust, Capability-based</span>',
-    '<span class="term-result">  Drivers:      Espace utilisateur (sandboxés)</span>',
-    '<span class="term-ok">  Statut:       ✓ Mathématiquement vérifié — 0 bug possible</span>',
-  ],
-  'sandbox': () => [
-    '<span class="term-info">Environnements isolés actifs :</span>',
-    '<span class="term-result">  [ACTIVE] navigateur    — mémoire: 256M, réseau: oui, fichiers: non</span>',
-    '<span class="term-result">  [ACTIVE] terminal      — mémoire: 64M,  réseau: non, fichiers: ~/</span>',
-    '<span class="term-result">  [ACTIVE] ai-firewall   — mémoire: 64M,  réseau: oui, fichiers: non</span>',
-    '<span class="term-ok">  Aucune fuite de données inter-processus détectée</span>',
-  ],
-  'update': () => [
-    '<span class="term-info">Vérification des mises à jour...</span>',
-    '<span class="term-result">  Téléchargement image-v1.0.1 en arrière-plan...</span>',
-    '<span class="term-result">  Vérification signature: ✓ OK (ed25519)</span>',
-    '<span class="term-ok">  Prêt. Le système basculera au prochain redémarrage (atomique)</span>',
-    '<span class="term-result">  Rollback disponible: image-v1.0.0</span>',
-  ],
-  'encrypt': () => [
-    '<span class="term-info">Chiffrement flux CPU↔RAM :</span>',
-    '<span class="term-result">  Algorithme: AES-256-GCM + ChaCha20-Poly1305</span>',
-    '<span class="term-result">  Clé rotative: toutes les 60s</span>',
-    '<span class="term-result">  HSM: activé (TPM 2.0)</span>',
-    '<span class="term-ok">  ✓ Actif — attaques cold-boot: bloquées</span>',
-  ],
-  'neofetch': () => [
-    '<span class="term-info">        ◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈</span>',
-    '<span class="term-result">  OS:     Omni-Kernel 1.0.0</span>',
-    '<span class="term-result">  Noyau:  micro-kernel v1.0 (Rust+Ada)</span>',
-    '<span class="term-result">  Shell:  omni-sh 2.1</span>',
-    `<span class="term-result">  CPU:    ${['Intel i9-14900K','AMD Ryzen 9 7950X','ARM Neoverse V2'][Math.floor(Math.random()*3)]}</span>`,
-    `<span class="term-result">  RAM:    ${(Math.random()*4+12).toFixed(1)}G / 32G</span>`,
-    '<span class="term-result">  FS:     ZFS (immuable, auto-réparant)</span>',
-    '<span class="term-result">  DE:     OmniShell (Vectoriel 600fps)</span>',
-    '<span class="term-ok">  Sécurité: Zéro Trust ✓ | Sandbox ✓ | Crypto ✓</span>',
-  ],
-  'cat /etc/omni-kernel.conf': () => [
-    '<span class="term-info">[kernel]</span>',
-    '<span class="term-result">  type            = micro-kernel</span>',
-    '<span class="term-result">  verified        = true</span>',
-    '<span class="term-result">  language        = rust+ada</span>',
-    '<span class="term-info">[security]</span>',
-    '<span class="term-result">  zero_trust      = true</span>',
-    '<span class="term-result">  sandbox_all     = true</span>',
-    '<span class="term-result">  encrypt_ram     = true</span>',
-    '<span class="term-result">  ai_firewall     = true</span>',
-    '<span class="term-info">[filesystem]</span>',
-    '<span class="term-result">  root            = readonly</span>',
-    '<span class="term-result">  type            = zfs</span>',
-    '<span class="term-result">  atomic_updates  = true</span>',
-    '<span class="term-info">[energy]</span>',
-    '<span class="term-result">  deep_sleep      = true</span>',
-    '<span class="term-result">  idle_cutoff_pct = 95</span>',
-  ],
-};
-
-function initTerminal() {
-  const out = document.getElementById('term-output');
-  const boot = [
-    '<span class="term-ok">Omni-Kernel OS v1.0.0 — Micro-Noyau Formellement Vérifié</span>',
-    '<span class="term-info">Architecture: Rust + Ada | ZFS Immuable | Zéro Trust | Sandbox Total</span>',
-    '<span class="term-result">Copyright (c) 2025 Omni-Kernel Project. Tous droits réservés.</span>',
-    '',
-    '<span class="term-result">Tapez <span class="term-cmd">help</span> pour afficher les commandes disponibles.</span>',
-    '',
-  ];
-  out.innerHTML = boot.map(l => `<div class="term-line">${l}</div>`).join('');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const inp = document.getElementById('term-input');
-  inp.addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
-    const val = inp.value.trim();
-    if (!val) return;
-    const out = document.getElementById('term-output');
-    out.innerHTML += `<div class="term-line"><span class="term-prompt">root@omni-kernel:~$ </span><span class="term-cmd">${val}</span></div>`;
-    const fn = termCmds[val] || termCmds[val.toLowerCase()];
-    if (fn) {
-      const lines = fn();
-      lines.forEach(l => { if (l !== undefined) out.innerHTML += `<div class="term-line">${l}</div>`; });
-    } else {
-      out.innerHTML += `<div class="term-line term-error">commande introuvable : ${val}. Tapez <span class="term-cmd">help</span>.</div>`;
-    }
-    out.innerHTML += '<div class="term-line"></div>';
-    inp.value = '';
-    out.scrollTop = out.scrollHeight;
-  });
-
-  // Ouvrir le terminal au démarrage
-  openApp('terminal');
-});
-
-/* ════════════════════════════════════════
-   FILE MANAGER
-════════════════════════════════════════ */
-const fileDB = {
-  '/home/user': [
-    {n:'Documents',t:'dir',e:'📁'},{n:'Images',t:'dir',e:'🖼️'},
-    {n:'Musique',t:'dir',e:'🎵'},{n:'.config',t:'dir',e:'📂'},
-    {n:'README.md',t:'md',e:'📄'},{n:'kernel.log',t:'log',e:'📋'},
-    {n:'notes.rs',t:'rs',e:'📝'},{n:'wallpaper.png',t:'img',e:'🖼️'},
-  ],
-  '/home/user/documents': [
-    {n:'rapport_kernel.pdf',t:'pdf',e:'📄'},{n:'architecture.md',t:'md',e:'📝'},
-    {n:'preuves_formelles.tex',t:'tex',e:'📄'},{n:'todo.txt',t:'txt',e:'📋'},
-  ],
-  '/home/user/images': [
-    {n:'screenshot_01.png',t:'img',e:'🖼️'},{n:'wallpaper_space.jpg',t:'img',e:'🖼️'},
-    {n:'kernel_diagram.svg',t:'svg',e:'🎨'},
-  ],
-  '/home/user/musique': [
-    {n:'ambient_01.ogg',t:'audio',e:'🎵'},{n:'lofi_session.mp3',t:'audio',e:'🎵'},
-  ],
-  '/dev': [
-    {n:'null',t:'dev',e:'⬛'},{n:'zero',t:'dev',e:'⬜'},
-    {n:'random',t:'dev',e:'🔀'},{n:'urandom',t:'dev',e:'🔀'},
-    {n:'sda',t:'dev',e:'💾'},{n:'sda1',t:'dev',e:'💽'},{n:'tty0',t:'dev',e:'📺'},
-  ],
-  '/etc': [
-    {n:'omni-kernel.conf',t:'conf',e:'⚙️'},{n:'fstab',t:'conf',e:'📋'},
-    {n:'hosts',t:'conf',e:'🌐'},{n:'passwd',t:'conf',e:'🔑'},
-    {n:'shadow',t:'conf',e:'🔒'},{n:'sudoers',t:'conf',e:'🛡️'},
-  ],
-  '/var/log': [
-    {n:'kernel.log',t:'log',e:'📋'},{n:'ai-firewall.log',t:'log',e:'🛡️'},
-    {n:'sandbox.log',t:'log',e:'📦'},{n:'zfs.log',t:'log',e:'💾'},
-  ],
-};
-
-let filesHistory = ['/home/user'], filesHIdx = 0;
-
-function renderFiles(path) {
-  document.getElementById('files-path').textContent = path;
-  const grid  = document.getElementById('files-grid');
-  const items = fileDB[path] || [{n:'(répertoire vide)',t:'empty',e:'📂'}];
-  grid.innerHTML = items.map(f =>
-    `<div class="file-item" ondblclick="fileOpen('${path}','${f.n}','${f.t}')">
-       <div class="file-icon">${f.e}</div>
-       <div class="file-name">${f.n}</div>
-     </div>`
-  ).join('');
-}
-
-function fileOpen(path, name, type) {
-  if (type === 'dir') {
-    const newPath = path + '/' + name.toLowerCase().replace(/\s/g,'_');
-    filesHistory = filesHistory.slice(0, filesHIdx + 1);
-    filesHistory.push(newPath);
-    filesHIdx++;
-    renderFiles(fileDB[newPath] ? newPath : path);
-  } else {
-    notify('Fichier ouvert', `${name} — type : ${type}`);
-  }
-}
-function filesNav(dir) {
-  filesHIdx = Math.max(0, Math.min(filesHistory.length - 1, filesHIdx + dir));
-  renderFiles(filesHistory[filesHIdx]);
-}
-function filesHome() { filesGoto('/home/user'); }
-function filesGoto(path) {
-  filesHistory.push(path);
-  filesHIdx = filesHistory.length - 1;
-  renderFiles(path);
-}
-
-/* ════════════════════════════════════════
-   SYSTEM MONITOR
-════════════════════════════════════════ */
-let monitorInterval = null;
-
-function initMonitor() {
-  renderMonitor();
-  if (monitorInterval) clearInterval(monitorInterval);
-  monitorInterval = setInterval(renderMonitor, 2000);
-}
-
-function renderMonitor() {
-  const modules = ['Noyau (HAL)', 'Scheduler', 'Mémoire', 'IPC', 'Drivers'];
-  document.getElementById('cpu-bars').innerHTML = modules.map(name => {
-    const v   = Math.floor(Math.random() * 40 + 2);
-    const col = v > 30 ? '#ff8060' : v > 15 ? '#ffb040' : '#40c060';
-    return `<div class="bar-row">
-      <div class="bar-label">${name}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${col}"></div></div>
-      <div class="bar-val">${v}%</div>
-    </div>`;
-  }).join('');
-
-  const mems = [
-    ['RAM utilisée', Math.floor(Math.random()*15+20), '#5580ff'],
-    ['Cache ZFS',    Math.floor(Math.random()*10+8),  '#40a080'],
-    ['Swap',         Math.floor(Math.random()*3),      '#8060a0'],
-  ];
-  document.getElementById('mem-bars').innerHTML = mems.map(([l,v,c]) =>
-    `<div class="bar-row">
-       <div class="bar-label">${l}</div>
-       <div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${c}"></div></div>
-       <div class="bar-val">${v}%</div>
-     </div>`
-  ).join('');
-
-  const procs = [
-    [1,   'omni-init',    'kernel',    0.0,                               '12M',  'running'],
-    [100, 'wayland',      'isolated',  +(Math.random()*2).toFixed(1),     '180M', 'running'],
-    [201, 'terminal',     'isolated',  +(Math.random()*0.5).toFixed(1),   '48M',  'running'],
-    [312, 'ai-firewall',  'kern-ext',  +(Math.random()*1.5).toFixed(1),   '64M',  'running'],
-    [405, 'zfs-daemon',   'isolated',  0.1,                               '32M',  'running'],
-    [506, 'audio-srv',    'isolated',  +(Math.random()*0.3).toFixed(1),   '20M',  'running'],
-  ];
-  document.getElementById('proc-body').innerHTML = procs.map(p =>
-    `<tr>
-       <td>${p[0]}</td>
-       <td style="color:#c8d6f0">${p[1]}</td>
-       <td><span style="background:rgba(52,100,200,0.2);color:#5580ff;padding:1px 5px;border-radius:3px;font-size:9px">${p[2]}</span></td>
-       <td>${p[3]}</td>
-       <td>${p[4]}</td>
-       <td style="color:#40c060">${p[5]}</td>
-     </tr>`
-  ).join('');
-
-  document.getElementById('ind-cpu').textContent = 'CPU ' + Math.floor(Math.random()*15+5) + '%';
-  document.getElementById('ind-mem').textContent = 'RAM ' + (Math.random()*2+1).toFixed(1) + 'G';
-}
-
-/* ════════════════════════════════════════
-   SETTINGS
-════════════════════════════════════════ */
-const settingsPanels = {
-  security: [
-    {l:'Sandbox Total',         s:'Chaque app dans une micro-bulle isolée',      v:true},
-    {l:'Chiffrement flux RAM',  s:'CPU↔RAM chiffré AES-256-GCM',                 v:true},
-    {l:'Pare-feu IA',           s:'Analyse paquets réseau en temps réel',        v:true},
-    {l:'Zéro Trust',            s:'Aucune confiance implicite entre apps',        v:true},
-    {l:'Accès micro par app',   s:'Autorisation physique requise',               v:false},
-  ],
-  kernel: [
-    {l:'Mode Micro-Noyau',      s:'Drivers en espace utilisateur',               v:true},
-    {l:'Vérification formelle', s:'Preuves mathématiques actives',               v:true},
-    {l:'PREEMPT_RT',            s:'Temps réel dur activé',                        v:true},
-    {l:'ASLR amélioré',         s:'Randomisation mémoire avancée',               v:true},
-  ],
-  energy: [
-    {l:'Deep Sleep agressif',   s:'95% composants coupés entre frappes',         v:true},
-    {l:'Turbo adaptatif',       s:'Fréquence selon charge réelle',               v:true},
-    {l:'GPU power-gate',        s:'GPU coupé si non utilisé',                    v:true},
-    {l:'WiFi pulse',            s:'WiFi réduit toutes les 500ms en idle',        v:false},
-  ],
-  display: [
-    {l:'Rendu vectoriel 600fps',s:'Moteur compositing ultra-léger',              v:true},
-    {l:'Lumière bleue auto',    s:'Réduction automatique après 20h',             v:true},
-    {l:'HDR natif',             s:'Pipeline couleur 10-bit',                     v:false},
-  ],
-  network: [
-    {l:'DNS chiffré (DoH)',     s:'DNS-over-HTTPS activé',                       v:true},
-    {l:'VPN split-tunnel',      s:'Uniquement trafic sensible',                  v:false},
-    {l:'Firewall sortant',      s:'Contrôle trafic applicatif',                  v:true},
-  ],
-  updates: [
-    {l:'Mises à jour atomiques',s:'Image système complète, rollback possible',   v:true},
-    {l:'Signature vérifiée',    s:'Ed25519 — chaque image signée',               v:true},
-    {l:'Auto-update nocturne',  s:'Téléchargement en arrière-plan',              v:true},
-    {l:'Rollback automatique',  s:'En cas d\'échec au démarrage',                v:true},
-  ],
-};
-
-const toggleStates = {};
-
-function renderSettings(panel) {
-  document.querySelectorAll('.settings-nav-item').forEach(s => {
-    s.classList.toggle('active', s.getAttribute('onclick')?.includes(`'${panel}'`));
-  });
-  const p = settingsPanels[panel] || [];
-  document.getElementById('settings-panel').innerHTML = p.map((s, i) => {
-    const key = panel + i;
-    if (!(key in toggleStates)) toggleStates[key] = s.v;
-    return `<div class="setting-row">
-      <div>
-        <div class="setting-info">${s.l}</div>
-        <div class="setting-sub">${s.s}</div>
-      </div>
-      <div class="toggle ${toggleStates[key] ? 'on' : ''}" onclick="toggleSetting('${key}',this)"></div>
-    </div>`;
-  }).join('');
-}
-
-function setPanel(p) { renderSettings(p); }
-
-function toggleSetting(key, el) {
-  toggleStates[key] = !toggleStates[key];
-  el.classList.toggle('on', toggleStates[key]);
-  const label = el.closest('.setting-row').querySelector('.setting-info').textContent;
-  notify('Paramètre modifié', `${label} : ${toggleStates[key] ? 'activé' : 'désactivé'}`);
-}
-
-/* ════════════════════════════════════════
-   NOTIFICATIONS
-════════════════════════════════════════ */
-function notify(title, body) {
-  const area = document.getElementById('notif-area');
-  const el   = document.createElement('div');
-  el.className = 'notif';
-  el.innerHTML = `<div class="notif-title">◈ ${title}</div><div class="notif-body">${body}</div>`;
-  area.appendChild(el);
-  setTimeout(() => el.style.opacity = '0', 3500);
-  setTimeout(() => el.remove(), 4200);
-}
-
-const autoNotifs = [
-  ['Pare-feu IA',         '3 tentatives bloquées — 185.220.x.x (Tor exit node)'],
-  ['Système de fichiers', 'Auto-réparation ZFS — 0 secteur défectueux détecté'],
-  ['Mise à jour',         'image-v1.0.1 prête — atomique, rollback disponible'],
-  ['Deep Sleep',          'Économie : 94% énergie composants inactifs'],
-  ['Sandbox',             'Navigateur isolé — accès fichiers refusé (conforme)'],
-  ['Chiffrement RAM',     'Rotation de clé effectuée — AES-256-GCM renouvelé'],
-];
-let notifIdx = 0;
-setTimeout(() => {
-  notify(...autoNotifs[notifIdx++ % autoNotifs.length]);
-  setInterval(() => notify(...autoNotifs[notifIdx++ % autoNotifs.length]), 12000);
-}, 1800);
 </script>
+
 </body>
 </html>
