@@ -3,112 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nébuleuse Interactive</title>
+    <title>Apex Neon Pulse</title>
     <style>
         body {
             margin: 0;
-            overflow: hidden;
-            background: radial-gradient(circle at center, #1a1a2e 0%, #020205 100%);
+            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            background-color: #050505;
+            color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
         }
 
-        .canvas-container {
+        .container {
+            text-align: center;
             position: relative;
+        }
+
+        .apex-ring {
+            width: 250px;
+            height: 250px;
+            border: 2px solid transparent;
+            border-top: 2px solid #00f2ff;
+            border-bottom: 2px solid #7000ff;
+            border-radius: 50%;
+            animation: spin 3s linear infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2), inset 0 0 20px rgba(112, 0, 255, 0.2);
+        }
+
+        .core {
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 70%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: pulse 2s ease-in-out infinite;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .symbol {
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00f2ff, #7000ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
+        .status-text {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: rgba(255, 255, 255, 0.5);
+            animation: flicker 4s infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+            20%, 24%, 55% { opacity: 0.3; }
+        }
+
+        .particles {
+            position: absolute;
+            top: 50%;
+            left: 50%;
             width: 100%;
             height: 100%;
-        }
-
-        #canvas {
-            filter: blur(1px) contrast(1.2);
-        }
-
-        .overlay {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.2);
             pointer-events: none;
-            text-transform: uppercase;
-            letter-spacing: 10px;
-            font-size: 14px;
-            bottom: 30px;
-            width: 100%;
-            text-align: center;
         }
     </style>
 </head>
 <body>
 
-<div class="canvas-container">
-    <canvas id="canvas"></canvas>
-    <div class="overlay">Déplacez la souris</div>
-</div>
-
-<script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-    const mouse = { x: null, y: null };
-
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-
-    window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', (e) => {
-        mouse.x = e.x;
-        mouse.y = e.y;
-        for(let i = 0; i < 3; i++) {
-            particles.push(new Particle());
-        }
-    });
-
-    class Particle {
-        constructor() {
-            this.x = mouse.x || canvas.width / 2;
-            this.y = mouse.y || canvas.height / 2;
-            this.size = Math.random() * 8 + 1;
-            this.speedX = Math.random() * 3 - 1.5;
-            this.speedY = Math.random() * 3 - 1.5;
-            this.color = `hsl(${Math.random() * 60 + 200}, 70%, 60%)`;
-            this.opacity = 1;
-        }
-
-        update() {
-            this.x += this.speedX;
-            this.y += this.speedY;
-            if (this.size > 0.1) this.size -= 0.05;
-            this.opacity -= 0.01;
-        }
-
-        draw() {
-            ctx.fillStyle = this.color;
-            ctx.globalAlpha = this.opacity;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < particles.length; i++) {
-            particles[i].update();
-            particles[i].draw();
-            if (particles[i].opacity <= 0) {
-                particles.splice(i, 1);
-                i--;
-            }
-        }
-        requestAnimationFrame(animate);
-    }
-
-    resize();
-    animate();
-</script>
+    <div class="container">
+        <div class="apex-ring">
+            <div class="core">
+                <div class="symbol">APEX</div>
+            </div>
+        </div>
+        <div class="status-text">Système Actif : Hybrid-Sync</div>
+    </div>
 
 </body>
 </html>
