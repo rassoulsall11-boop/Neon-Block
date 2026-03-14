@@ -3,128 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sall-Tech Industries | Omni-Kernel Terminal</title>
+    <title>Nébuleuse Interactive</title>
     <style>
         body {
-            background-color: #050505;
-            color: #00ff41;
-            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #020205 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
-            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        #terminal {
-            width: 80%;
-            height: 60%;
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #00ff41;
-            box-shadow: 0 0 20px #00ff4133;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
         }
 
-        .header {
-            color: #00ff41;
-            font-weight: bold;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #00ff41;
-            padding-bottom: 10px;
+        #canvas {
+            filter: blur(1px) contrast(1.2);
         }
 
-        .output {
-            flex-grow: 1;
-            white-space: pre-wrap;
-            margin-bottom: 10px;
-        }
-
-        .input-line {
-            display: flex;
-        }
-
-        .prompt {
-            color: #00ff41;
-            margin-right: 10px;
-        }
-
-        input {
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
-            outline: none;
-            flex-grow: 1;
-        }
-
-        .cursor {
-            color: #00ff41;
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0; }
+        .overlay {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 10px;
+            font-size: 14px;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-<div id="terminal">
-    <div class="header">
-=======================================================
-  OMNI-KERNEL v5.5 (SALL-TECH INDUSTRIES - WEB PORT)
-  STATUS: MULTITASKING_PREEMPT_ACTIVE
-=======================================================
-    </div>
-    <div id="output" class="output">Bienvenue dans l'interface de contrôle Neon-Block.
-Tapez 'help' pour voir les commandes disponibles.</div>
-    <div class="input-line">
-        <span class="prompt">Sall-Tech ></span>
-        <input type="text" id="commandInput" autofocus>
-    </div>
+<div class="canvas-container">
+    <canvas id="canvas"></canvas>
+    <div class="overlay">Déplacez la souris</div>
 </div>
 
 <script>
-    const input = document.getElementById('commandInput');
-    const output = document.getElementById('output');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    const mouse = { x: null, y: null };
 
-    const commands = {
-        'help': "Commandes disponibles : sysinfo, nexus, extraction, neon, clear",
-        'sysinfo': "Omni-Kernel v5.5 | Arch: x86_64 | Memory: Virtualized | Status: Stable",
-        'nexus': "[NEXUS AI] Liaison établie. Analyse des blocs néon en cours...",
-        'extraction': "[ALERTE] Déconnexion du monde virtuel amorcée...",
-        'neon': "Redirection vers Neon-Block... (Simulation)",
-        'clear': "Effacer"
-    };
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
 
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const cmd = input.value.toLowerCase().trim();
-            printOutput(`\nSall-Tech > ${cmd}`);
-
-            if (cmd === 'clear') {
-                output.innerText = "";
-            } else if (commands[cmd]) {
-                printOutput(commands[cmd]);
-            } else if (cmd !== "") {
-                printOutput(`Erreur : Commande '${cmd}' inconnue.`);
-            }
-
-            input.value = "";
-            window.scrollTo(0, document.body.scrollHeight);
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', (e) => {
+        mouse.x = e.x;
+        mouse.y = e.y;
+        for(let i = 0; i < 3; i++) {
+            particles.push(new Particle());
         }
     });
 
-    function printOutput(text) {
-        output.innerText += "\n" + text;
-        const terminal = document.getElementById('terminal');
-        terminal.scrollTop = terminal.scrollHeight;
+    class Particle {
+        constructor() {
+            this.x = mouse.x || canvas.width / 2;
+            this.y = mouse.y || canvas.height / 2;
+            this.size = Math.random() * 8 + 1;
+            this.speedX = Math.random() * 3 - 1.5;
+            this.speedY = Math.random() * 3 - 1.5;
+            this.color = `hsl(${Math.random() * 60 + 200}, 70%, 60%)`;
+            this.opacity = 1;
+        }
+
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            if (this.size > 0.1) this.size -= 0.05;
+            this.opacity -= 0.01;
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = this.opacity;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < particles.length; i++) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].opacity <= 0) {
+                particles.splice(i, 1);
+                i--;
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+
+    resize();
+    animate();
 </script>
 
 </body>
