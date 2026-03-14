@@ -3,144 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interface IA - Projet Nexus</title>
+    <title>Nexus Core - IA Nouvelle Ère</title>
     <style>
         :root {
             --core-color: #00d4ff;
-            --bg-color: #050505;
-            --text-color: #e0e0e0;
+            --bg-color: #020205;
+            --accent: rgba(0, 212, 255, 0.3);
         }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        body, html {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
             overflow: hidden;
         }
 
-        /* Le Noyau de l'IA (Animation Organique) */
-        .ia-core-container {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            margin-bottom: 50px;
-        }
-
-        .ia-core {
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, var(--core-color) 0%, transparent 70%);
-            border-radius: 50%;
-            filter: blur(20px);
-            animation: pulse 4s infinite ease-in-out;
-            opacity: 0.8;
-        }
-
-        .ia-ring {
+        /* Arrière-plan de particules */
+        #particles-js {
             position: absolute;
-            top: 0; left: 0;
             width: 100%;
             height: 100%;
-            border: 2px solid var(--core-color);
-            border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
-            animation: rotate 10s infinite linear;
+            z-index: 1;
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.2); opacity: 0.9; }
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* Zone de dialogue */
-        .chat-container {
-            width: 80%;
-            max-width: 600px;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .output-text {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            min-height: 50px;
-            margin-bottom: 20px;
-            border-left: 3px solid var(--core-color);
-            padding-left: 15px;
-        }
-
-        .input-area {
+        /* Conteneur de l'IA */
+        .ia-interface {
+            position: relative;
+            z-index: 10;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        /* Noyau Central Réactif */
+        .core-wrapper {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin-bottom: 40px;
+            transition: 1s ease;
+        }
+
+        .core-glow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: var(--core-color);
+            border-radius: 50%;
+            filter: blur(40px);
+            opacity: 0.6;
+            animation: breathe 3s infinite ease-in-out;
+        }
+
+        .core-inner {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            top: 35px;
+            left: 35px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--core-color);
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.3); opacity: 0.8; }
+        }
+
+        /* Terminal de texte */
+        .terminal {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--accent);
+            padding: 25px;
+            border-radius: 10px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        #response-text {
+            font-size: 1.2rem;
+            min-height: 60px;
+            margin-bottom: 20px;
+            color: #00ffcc;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+
+        .input-group {
+            display: flex;
+            border-top: 1px solid var(--accent);
+            padding-top: 15px;
         }
 
         input {
-            flex-grow: 1;
+            flex: 1;
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: none;
             color: white;
-            padding: 10px;
-            border-radius: 5px;
+            font-size: 1rem;
             outline: none;
+            padding: 10px;
         }
 
         button {
-            background: var(--core-color);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            background: transparent;
+            border: 1px solid var(--core-color);
+            color: var(--core-color);
+            padding: 10px 25px;
             cursor: pointer;
-            font-weight: bold;
             transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         button:hover {
-            box-shadow: 0 0 15px var(--core-color);
+            background: var(--core-color);
+            color: black;
+            box-shadow: 0 0 20px var(--core-color);
         }
+
+        /* Classes d'état émotionnel */
+        .state-alert { --core-color: #ff3e3e; }
+        .state-creation { --core-color: #bc3eff; }
     </style>
 </head>
 <body>
 
-    <div class="ia-core-container">
-        <div class="ia-core"></div>
-        <div class="ia-ring"></div>
-        <div class="ia-ring" style="animation-duration: 15s; border-color: rgba(255,255,255,0.3);"></div>
+    <div id="particles-js"></div>
+
+    <div class="ia-interface">
+        <div class="core-wrapper" id="core-container">
+            <div class="core-glow"></div>
+            <div class="core-inner"></div>
+        </div>
+
+        <div class="terminal">
+            <div id="response-text">Initialisation du système Nexus... En attente de données.</div>
+            <div class="input-group">
+                <input type="text" id="user-input" placeholder="Parlez au système..." autocomplete="off">
+                <button onclick="handleInteraction()">Envoyer</button>
+            </div>
+        </div>
     </div>
 
-    <div class="chat-container">
-        <div class="output-text" id="ai-response">
-            Système initialisé. Je suis prête à explorer vos concepts.
-        </div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Entrez une commande ou une idée...">
-            <button onclick="processInput()">Envoyer</button>
-        </div>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    
     <script>
-        function processInput() {
-            const input = document.getElementById('user-input');
-            const responseArea = document.getElementById('ai-response');
-            
-            if(input.value.trim() !== "") {
-                responseArea.innerText = "Analyse en cours : '" + input.value + "'... Connexion aux modules créatifs établie.";
-                input.value = "";
+        // Configuration des particules
+        particlesJS("particles-js", {
+            "particles": {
+                "number": { "value": 80 },
+                "color": { "value": "#ffffff" },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.5 },
+                "size": { "value": 2 },
+                "line_linked": { "enable": true, "distance": 150, "color": "#00d4ff", "opacity": 0.2, "width": 1 }
             }
-        }
-    </script>
+        });
 
+        const core = document.getElementById('core-container');
+        const output = document.getElementById('response-text');
+        const input = document.getElementById('user-input');
+
+        function handleInteraction() {
+            const val = input.value.toLowerCase();
+            input.value = "";
+            
+            // Logique de réponse basique & changement d'état
+            let message = "";
+            
+            if(val.includes("danger") || val.includes("bloqué")) {
+                core.className = "core-wrapper state-alert";
+                message = "Alerte système détectée. Protocoles de sécurité activés.";
+            } else if(val.includes("création") || val.includes("invente")) {
+                core.className = "core-wrapper state-creation";
+                message = "Accès aux modules créatifs... Imagination en cours de rendu.";
+            } else {
+                core.className = "core-wrapper";
+                message = "Analyse terminée. Je traite votre requête avec précision.";
+            }
+
+            typeWriter(message);
+            speak(message);
+        }
+
+        function typeWriter(text) {
+            let i = 0;
+            output.innerHTML = "";
+            function nextChar() {
+                if (i < text.length) {
+                    output.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(nextChar, 40);
+                }
+            }
+            nextChar();
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'fr-FR';
+            utterance.rate = 0.9;
+            utterance.pitch = 0.8;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Permettre d'utiliser "Entrée"
+        input.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleInteraction();
+        });
+    </script>
 </body>
 </html>
