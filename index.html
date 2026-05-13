@@ -2,49 +2,32 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>GPU MELTDOWN ULTRA v7 - ULTIMATE</title>
+    <title>WEBGL ADVANCED SHADER BURN v4</title>
     <style>
         body { margin:0; overflow:hidden; background:#000; }
-        canvas { position:absolute; top:0; left:0; width:100%; height:100%; image-rendering: pixelated; }
-        .overlay { 
-            position:absolute; top:10px; left:10px; color:#0ff; font-family:monospace; 
-            pointer-events:none; text-shadow: 0 0 12px #0ff; z-index: 10;
-        }
-        .warning { 
-            position:absolute; bottom:10px; left:10px; color:#f00; font-family:monospace; 
-            text-shadow: 0 0 12px #f00; z-index: 10;
-        }
+        canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
+        .overlay { position:absolute; top:10px; left:10px; color:#0ff; font-family:monospace; pointer-events:none; }
     </style>
 </head>
 <body>
 <canvas id="gl"></canvas>
-<div class="overlay">GPU MELTDOWN ULTRA v7 • 300 STEPS • 18 FBM • 280 MANDEL • ULTIMATE LOAD</div>
-<div class="warning">ATTENTION : CE TEST EST EXTRÊMEMENT LOURD - SURVEILLE TA TEMPÉRATURE !</div>
+<div class="overlay">RAYMARCH + FBM + MANDELBROT FEEDBACK • MOUSE = CAMERA</div>
 
 <script>
-// === GPU MELTDOWN ULTRA v7 - ULTIMATE ===
+// === ADVANCED WEBGL SHADER EXPLORER - GPU MELTDOWN ===
 const canvas = document.getElementById('gl');
-const gl = canvas.getContext('webgl2', { 
-    alpha: false, 
-    antialias: false, 
-    depth: false, 
-    stencil: false,
-    preserveDrawingBuffer: false 
-}) || canvas.getContext('webgl', { alpha: false, antialias: false });
+const gl = canvas.getContext('webgl2', { alpha: false, antialias: false }) || 
+           canvas.getContext('webgl', { alpha: false, antialias: false });
 
-let w, h, time = 0, mouseX = 0.5, mouseY = 0.5, frame = 0;
+let w, h, time = 0, mouseX = 0, mouseY = 0;
 
 function resize() {
-    w = canvas.width = Math.floor(window.innerWidth * 1.08);   // Sur-résolution contrôlée
-    h = canvas.height = Math.floor(window.innerHeight * 1.08);
-    gl.viewport(0, 0, w, h);
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
 }
 resize();
 window.addEventListener('resize', resize);
-document.addEventListener('mousemove', e => {
-    mouseX = e.clientX / window.innerWidth;
-    mouseY = e.clientY / window.innerHeight;
-});
+document.addEventListener('mousemove', e => { mouseX = e.clientX / w; mouseY = e.clientY / h; });
 
 const vsSource = `#version 300 es
 in vec2 aPos;
@@ -57,8 +40,9 @@ uniform float uTime;
 uniform vec2 uRes;
 uniform vec2 uMouse;
 
+// === NOISE & FBM AVANCÉ ===
 float hash(vec3 p) {
-    p = fract(p * vec3(0.3183099, 0.3678794, 0.2957142) + 0.1);
+    p = fract(p * 0.3183099 + .1);
     p *= 17.0;
     return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
 }
@@ -72,42 +56,25 @@ float noise(vec3 x) {
                    mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z);
 }
 
-// FBM 18 octaves avec rotation
 float fbm(vec3 p) {
     float v = 0.0, a = 0.5;
-    vec3 shift = vec3(uTime * 0.25);
-    for(int i = 0; i < 18; i++) {
-        v += a * noise(p + shift);
-        p *= 2.04;
-        a *= 0.46;
-        shift = mat3(0.8, -0.6, 0, 0.6, 0.8, 0, 0, 0, 1) * shift; // Rotation
+    for(int i=0; i<9; i++) {
+        v += a * noise(p);
+        p *= 2.02; a *= 0.49;
     }
     return v;
 }
 
-// Map ultra complexe (Mandelbulb-inspired + multiple layers)
+// === RAYMARCHING SCÈNE ===
 float map(vec3 p) {
-    float d = length(p) - 1.55 + sin(uTime * 1.2 + p.y * 6.0) * 0.7;
-
-    // Principale FBM terrain
-    d = min(d, p.y + 3.2 + fbm(p * 2.6 + uTime * 0.5) * 2.4);
-
-    // Orbites animées
-    d = min(d, length(p - vec3(sin(uTime*1.4)*5.5, sin(uTime*0.9)*2.8, cos(uTime*1.2)*5.0)) - 1.1);
-
-    // Sphère fractale secondaire
-    vec3 p2 = p - vec3(cos(uTime*0.8)*4.2, 2.2, sin(uTime*1.5)*3.8);
-    d = min(d, length(p2) - 1.05 + fbm(p2*3.5)*0.8);
-
-    // Ajout Mandelbulb-like fold
-    float fold = length(p * 1.6 + vec3(sin(uTime*2.1), cos(uTime*1.8), sin(uTime*2.3))) - 1.6 + fbm(p*6.0)*0.7;
-    d = min(d, fold);
-
+    float d = length(p) - 1.8 + sin(uTime*0.6 + p.y*3.0)*0.4;
+    d = min(d, p.y + 2.5 + fbm(p*1.8 + uTime*0.3)*1.4);
+    d = min(d, length(p - vec3(sin(uTime)*3.0, 1.5, cos(uTime*0.7)*3.0)) - 1.2);
     return d;
 }
 
 vec3 normal(vec3 p) {
-    vec2 e = vec2(0.0005, 0.0);
+    vec2 e = vec2(0.001, 0.0);
     return normalize(vec3(map(p+e.xyy)-map(p-e.xyy),
                          map(p+e.yxy)-map(p-e.yxy),
                          map(p+e.yyx)-map(p-e.yyx)));
@@ -115,62 +82,57 @@ vec3 normal(vec3 p) {
 
 vec3 raymarch(vec3 ro, vec3 rd) {
     float t = 0.0;
-    for(int i = 0; i < 300; i++) {           // 300 steps
+    for(int i=0; i<120; i++) {
         vec3 p = ro + rd * t;
         float d = map(p);
-        if (d < 0.001 || t > 160.0) break;
-        t += d * 0.62;
+        if(d < 0.002 || t > 80.0) break;
+        t += d * 0.75;
     }
     return vec3(t, 0.0, 0.0);
 }
 
-// Mandelbrot ultra-profond
+// === MANDELBROT LAYER FEEDBACK ===
 float mandel(vec2 c) {
     vec2 z = vec2(0.0);
-    for(int i = 0; i < 280; i++) {
+    for(int i=0; i<80; i++) {
         z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
-        if (dot(z, z) > 4.0) return float(i) / 280.0;
+        if(dot(z,z) > 4.0) return float(i)/80.0;
     }
     return 0.0;
 }
 
 void main() {
     vec2 uv = (gl_FragCoord.xy - uRes * 0.5) / uRes.y;
-    vec3 cam = vec3(sin(uTime*0.3 + uMouse.x*9.0)*9.0, 
-                    3.5 + uMouse.y*7.0, 
-                    cos(uTime*0.27)*11.0);
-    
-    vec3 dir = normalize(vec3(uv * 1.2, -0.9));
+    vec3 cam = vec3(sin(uTime*0.2 + uMouse.x*6.0)*6.0, 3.0 + uMouse.y*4.0, cos(uTime*0.2)*8.0);
+    vec3 dir = normalize(vec3(uv, -1.0));
     
     vec3 hit = raymarch(cam, dir);
     vec3 col = vec3(0.0);
-
-    if (hit.x < 150.0) {
+    
+    if(hit.x < 80.0) {
         vec3 p = cam + dir * hit.x;
         vec3 n = normal(p);
         col = n * 0.5 + 0.5;
-        col += fbm(p * 6.0 + uTime * 1.8) * 3.8;
-        col += pow(max(0.0, fbm(p * 14.0)), 3.5) * 3.2;
+        col += fbm(p * 3.0 + uTime) * 1.8;
     } else {
-        col = vec3(0.006, 0.0, 0.045);
+        col = vec3(0.02, 0.0, 0.08);
     }
-
-    // Multi-layer Mandel feedback
-    vec2 muv = uv * (3.2 + sin(uTime*0.45)*1.4) + vec2(sin(uTime*0.18), cos(uTime*0.25)) * 0.6;
-    float m = mandel(muv * 1.8);
-    col = mix(col, vec3(m*3.2, m*0.85, pow(m, 2.8)*4.0), 0.75);
-
-    // Post-process MAX
-    col = pow(col, vec3(0.68));
-    col += noise(vec3(uv * 220.0, uTime * 32.0)) * 0.4;
-    col += noise(vec3(uv * 480.0, uTime * 48.0)) * 0.25;
-    col = fract(col * 1.85 + uTime * 0.15);
-    col *= 1.0 + 0.15 * sin(uTime * 30.0 + uv.x * 100.0 + uv.y * 80.0);
-
+    
+    // Overlay Mandel feedback
+    vec2 muv = uv * 1.8 + vec2(sin(uTime*0.1)*0.3, cos(uTime*0.13)*0.2);
+    float m = mandel(muv * (2.0 + sin(uTime*0.4)*0.8));
+    col = mix(col, vec3(m*1.6, m*0.4, sin(m*12.0)), 0.6);
+    
+    // Post-process heavy
+    col = pow(col, vec3(0.85));
+    col += noise(vec3(uv*80.0, uTime*12.0)) * 0.15;
+    col = fract(col * 1.3 + uTime*0.1);
+    
     fragColor = vec4(col, 1.0);
 }`;
 
 const program = gl.createProgram();
+
 [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER].forEach((type, i) => {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, i === 0 ? vsSource : fsSource);
@@ -190,27 +152,22 @@ const posLoc = gl.getAttribLocation(program, "aPos");
 gl.enableVertexAttribArray(posLoc);
 gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-function heavyCPUBurn() {
-    let x = 0.0;
-    for(let i = 0; i < 420000; i++) {
-        x += Math.sin(time * (i % 2048)) * Math.cos(i * 0.002 + time * 0.7);
-    }
-    return x;
-}
-
 function render() {
     time += 0.016;
-    frame++;
-
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0,0,0,1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    
     gl.useProgram(program);
     gl.uniform1f(gl.getUniformLocation(program, "uTime"), time);
     gl.uniform2f(gl.getUniformLocation(program, "uRes"), w, h);
     gl.uniform2f(gl.getUniformLocation(program, "uMouse"), mouseX, mouseY);
     
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-    if (frame % 2 === 0) heavyCPUBurn();
-
+    
+    // Burn supplémentaire
+    for(let i=0; i<120000; i++) Math.sin(time * i % 999);
+    
     requestAnimationFrame(render);
 }
 
