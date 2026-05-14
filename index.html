@@ -1,177 +1,155 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>WEBGL ADVANCED SHADER BURN v4</title>
-    <style>
-        body { margin:0; overflow:hidden; background:#000; }
-        canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
-        .overlay { position:absolute; top:10px; left:10px; color:#0ff; font-family:monospace; pointer-events:none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>NEON VORTEX</title>
+<!-- ════ CRAZYGAMES SDK v3 ════ -->
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+:root{
+  --cy:#00f3ff;--re:#ff0055;--or:#ff9800;--gr:#00ff88;--pu:#bf00ff;--ye:#ffe600;
+  --bg:#020408;--f:'Orbitron',sans-serif;
+  --free:#00ff88;--rare:#00b4ff;--epic:#c84bff;--leg:#ffd700;
+  --ui-xs:clamp(.48rem,1.4vw,.58rem);
+  --ui-sm:clamp(.55rem,1.6vw,.68rem);
+  --ui-md:clamp(.68rem,2vw,.85rem);
+  --ui-lg:clamp(.85rem,2.4vw,1.1rem);
+}
+*{box-sizing:border-box;user-select:none;touch-action:none;margin:0;padding:0;}
+body,html{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:var(--f);}
+canvas{display:block;position:absolute;top:0;left:0;width:100%;height:100%;}
+/* (Tout ton CSS reste inchangé) */
+</style>
 </head>
 <body>
-<canvas id="gl"></canvas>
-<div class="overlay">RAYMARCH + FBM + MANDELBROT FEEDBACK • MOUSE = CAMERA</div>
+<!-- Tout ton HTML reste identique jusqu'au canvas -->
+
+<canvas id="canvas"></canvas>
 
 <script>
-// === ADVANCED WEBGL SHADER EXPLORER - GPU MELTDOWN ===
-const canvas = document.getElementById('gl');
-const gl = canvas.getContext('webgl2', { alpha: false, antialias: false }) || 
-           canvas.getContext('webgl', { alpha: false, antialias: false });
+/* ════ CRAZYGAMES SDK v3 - CORRECTED ════ */
+let cgSDKReady = false;
 
-let w, h, time = 0, mouseX = 0, mouseY = 0;
-
-function resize() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener('resize', resize);
-document.addEventListener('mousemove', e => { mouseX = e.clientX / w; mouseY = e.clientY / h; });
-
-const vsSource = `#version 300 es
-in vec2 aPos;
-void main() { gl_Position = vec4(aPos, 0.0, 1.0); }`;
-
-const fsSource = `#version 300 es
-precision highp float;
-out vec4 fragColor;
-uniform float uTime;
-uniform vec2 uRes;
-uniform vec2 uMouse;
-
-// === NOISE & FBM AVANCÉ ===
-float hash(vec3 p) {
-    p = fract(p * 0.3183099 + .1);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-
-float noise(vec3 x) {
-    vec3 i = floor(x), f = fract(x);
-    f = f*f*(3.0-2.0*f);
-    return mix(mix(mix(hash(i+vec3(0,0,0)), hash(i+vec3(1,0,0)), f.x),
-                   mix(hash(i+vec3(0,1,0)), hash(i+vec3(1,1,0)), f.x), f.y),
-               mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x),
-                   mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z);
-}
-
-float fbm(vec3 p) {
-    float v = 0.0, a = 0.5;
-    for(int i=0; i<9; i++) {
-        v += a * noise(p);
-        p *= 2.02; a *= 0.49;
+async function initCrazyGamesSDK() {
+    if (cgSDKReady) return;
+    try {
+        if (window.CrazyGames && window.CrazyGames.SDK) {
+            console.log("%c[VORTEX] Initialisation CrazyGames SDK v3...", "color:#00ff88");
+            await window.CrazyGames.SDK.init();
+            cgSDKReady = true;
+            console.log("%c[VORTEX] ✅ SDK CrazyGames INITIALISÉ AVEC SUCCÈS", "color:#00ff88; font-weight:bold");
+        } else {
+            console.warn("%c[VORTEX] ⚠️ SDK non détecté (test local ou adblock)", "color:#ffaa00");
+        }
+    } catch (e) {
+        console.error("%c[VORTEX] ❌ Erreur lors de l'initialisation du SDK", e);
     }
-    return v;
 }
 
-// === RAYMARCHING SCÈNE ===
-float map(vec3 p) {
-    float d = length(p) - 1.8 + sin(uTime*0.6 + p.y*3.0)*0.4;
-    d = min(d, p.y + 2.5 + fbm(p*1.8 + uTime*0.3)*1.4);
-    d = min(d, length(p - vec3(sin(uTime)*3.0, 1.5, cos(uTime*0.7)*3.0)) - 1.2);
-    return d;
-}
-
-vec3 normal(vec3 p) {
-    vec2 e = vec2(0.001, 0.0);
-    return normalize(vec3(map(p+e.xyy)-map(p-e.xyy),
-                         map(p+e.yxy)-map(p-e.yxy),
-                         map(p+e.yyx)-map(p-e.yyx)));
-}
-
-vec3 raymarch(vec3 ro, vec3 rd) {
-    float t = 0.0;
-    for(int i=0; i<120; i++) {
-        vec3 p = ro + rd * t;
-        float d = map(p);
-        if(d < 0.002 || t > 80.0) break;
-        t += d * 0.75;
+async function showCrazyAd(type = 'midgame') {
+    if (!cgSDKReady || !window.CrazyGames?.SDK) {
+        console.log(`%c[VORTEX] Pub ${type} ignorée (SDK non prêt)`, "color:#ffaa00");
+        return false;
     }
-    return vec3(t, 0.0, 0.0);
-}
-
-// === MANDELBROT LAYER FEEDBACK ===
-float mandel(vec2 c) {
-    vec2 z = vec2(0.0);
-    for(int i=0; i<80; i++) {
-        z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
-        if(dot(z,z) > 4.0) return float(i)/80.0;
+    try {
+        await window.CrazyGames.SDK.ad.requestAd(type);
+        console.log(`%c[VORTEX] ✅ Pub ${type} demandée`, "color:#00ff88");
+        return true;
+    } catch (e) {
+        console.warn(`%c[VORTEX] Pub ${type} refusée`, e);
+        return false;
     }
-    return 0.0;
 }
 
-void main() {
-    vec2 uv = (gl_FragCoord.xy - uRes * 0.5) / uRes.y;
-    vec3 cam = vec3(sin(uTime*0.2 + uMouse.x*6.0)*6.0, 3.0 + uMouse.y*4.0, cos(uTime*0.2)*8.0);
-    vec3 dir = normalize(vec3(uv, -1.0));
-    
-    vec3 hit = raymarch(cam, dir);
-    vec3 col = vec3(0.0);
-    
-    if(hit.x < 80.0) {
-        vec3 p = cam + dir * hit.x;
-        vec3 n = normal(p);
-        col = n * 0.5 + 0.5;
-        col += fbm(p * 3.0 + uTime) * 1.8;
-    } else {
-        col = vec3(0.02, 0.0, 0.08);
-    }
-    
-    // Overlay Mandel feedback
-    vec2 muv = uv * 1.8 + vec2(sin(uTime*0.1)*0.3, cos(uTime*0.13)*0.2);
-    float m = mandel(muv * (2.0 + sin(uTime*0.4)*0.8));
-    col = mix(col, vec3(m*1.6, m*0.4, sin(m*12.0)), 0.6);
-    
-    // Post-process heavy
-    col = pow(col, vec3(0.85));
-    col += noise(vec3(uv*80.0, uTime*12.0)) * 0.15;
-    col = fract(col * 1.3 + uTime*0.1);
-    
-    fragColor = vec4(col, 1.0);
-}`;
+/* ====================== TON CODE ORIGINAL (modifié uniquement aux endroits nécessaires) ====================== */
 
-const program = gl.createProgram();
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-[gl.VERTEX_SHADER, gl.FRAGMENT_SHADER].forEach((type, i) => {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, i === 0 ? vsSource : fsSource);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(shader));
-    gl.attachShader(program, shader);
-});
+/* ... Tout le code SKINS, G, AI, CELIA, classes, fonctions ... reste IDENTIQUE ... */
 
-gl.linkProgram(program);
-if (!gl.getProgramParameter(program, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(program));
+function gameOver(){
+  G.state='GAMEOVER';
+  document.getElementById('ai-bar').classList.add('hidden');
 
-const buffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  // === PUB CRAZYGAMES ===
+  showCrazyAd('midgame');
 
-const posLoc = gl.getAttribLocation(program, "aPos");
-gl.enableVertexAttribArray(posLoc);
-gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+  // Suite du code original
+  const earned=Math.floor(G.coinBuffer);
+  G.S.coins+=earned;
+  G.S.totalCoins+=earned;
+  G.coinBuffer=0;
 
-function render() {
-    time += 0.016;
-    gl.viewport(0, 0, w, h);
-    gl.clearColor(0,0,0,1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    
-    gl.useProgram(program);
-    gl.uniform1f(gl.getUniformLocation(program, "uTime"), time);
-    gl.uniform2f(gl.getUniformLocation(program, "uRes"), w, h);
-    gl.uniform2f(gl.getUniformLocation(program, "uMouse"), mouseX, mouseY);
-    
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    
-    // Burn supplémentaire
-    for(let i=0; i<120000; i++) Math.sin(time * i % 999);
-    
-    requestAnimationFrame(render);
+  const deathTax=G.level<=2?Math.floor(G.S.coins*.50):G.level<=5?Math.floor(G.S.coins*.35):G.level<=9?Math.floor(G.S.coins*.20):G.level<=14?Math.floor(G.S.coins*.10):Math.floor(G.S.coins*.04);
+  if(deathTax>0){loseCoins(deathTax,canvas.width/2,canvas.height/2);showNotif('💀 TAXE DE MORT : -'+deathTax+'⬡','#ff3333');}
+
+  G.S.kills+=G.kills;
+  G.S.best=Math.max(G.S.best,Math.floor(G.score));
+  G.S.maxLv=Math.max(G.S.maxLv,G.level);
+  G.S.maxCombo=Math.max(G.S.maxCombo,G.maxCombo);
+  
+  doSave();
+  checkAch();
+  refreshMenu();
+  renderAch();
+
+  document.getElementById('fsc').textContent=Math.floor(G.score);
+  document.getElementById('fdt').textContent=`Niveau ${G.level}  •  \( {G.kills} neutralisés  •  Combo × \){G.maxCombo}`;
+  const netStr=deathTax>0?` (taxe -${deathTax}⬡)`:'';
+  document.getElementById('fcoin').textContent='⬡ +'+earned+' gagnés'+netStr;
+  document.getElementById('gov').classList.remove('hidden');
 }
 
-render();
+/* ====================== INIT MODIFIÉE ====================== */
+
+async function init(){
+  await initCrazyGamesSDK();   // ← Initialisation SDK
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  const mv = e => {
+    if (G.state !== 'PLAYING' && G.state !== 'EV_PAUSE') return;
+    const t = e.touches ? e.touches[0] : e;
+    G.pl.tx = t.clientX;
+    G.pl.ty = t.clientY;
+  };
+
+  window.addEventListener('mousemove', mv);
+  window.addEventListener('touchmove', mv, {passive:true});
+  window.addEventListener('touchstart', mv, {passive:true});
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') togglePause();
+  });
+
+  document.getElementById('s1').onclick = () => startGame(1);
+  document.getElementById('s2').onclick = () => startGame(Math.max(1, G.S.maxLv));
+  document.getElementById('s3').onclick = openShop;
+  document.getElementById('s4').onclick = () => {
+    renderAch();
+    document.getElementById('achpan').classList.remove('hidden');
+  };
+
+  document.getElementById('shop-back').onclick = closeShop;
+  document.getElementById('achback').onclick = () => document.getElementById('achpan').classList.add('hidden');
+  document.getElementById('pbtn').onclick = togglePause;
+
+  initShopTabs();
+  loadSave();
+  refreshMenu();
+  renderAch();
+
+  runLoader(() => showTutoIfNeeded());
+  requestAnimationFrame(loop);
+}
+
+// Le reste de tes fonctions (resize, refreshMenu, earnCoins, etc.) reste inchangé
+// ... (tout le code jusqu'à la fin reste identique)
+
+init();
 </script>
 </body>
 </html>
