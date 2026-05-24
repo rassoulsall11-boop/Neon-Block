@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STATION APEX - INTERFACE WEB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    
+    <style>
+        body {
+            background-color: #020202;
+            color: #00ff41;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .terminal-bg {
+            background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
+        }
+
+        .glitch {
+            animation: glitch 1s infinite;
+        }
+
+        @keyframes glitch {
+            0% { text-shadow: 2px 2px #00ffff, -2px -2px #ff00ff; }
+            20% { text-shadow: -2px 2px #00ffff, 2px -2px #ff00ff; }
+            40% { text-shadow: 2px -2px #00ffff, -2px 2px #ff00ff; }
+            100% { text-shadow: 2px 2px #00ffff, -2px -2px #ff00ff; }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 20px;
+        }
+
+        .message-user {
+            background: rgba(0, 255, 65, 0.08);
+            border-left: 3px solid #00ff41;
+        }
+
+        .message-assistant {
+            background: rgba(0, 255, 255, 0.05);
+            border-left: 3px solid #00ffff;
+        }
+
+        .code-block {
+            background: #0a0a0a;
+            border: 1px solid #00ffff;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+
+        .scanline {
+            position: relative;
+        }
+        
+        .scanline::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0, 255, 65, 0.03) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-4 terminal-bg text-green-400">
+
+    <!-- HEADER -->
+    <header class="border-b border-green-900 pb-4 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-widest glitch">STATION APEX</h1>
+                <p class="text-xs text-cyan-400 tracking-[4px]">NEURAL INTERFACE v0.8.4</p>
+            </div>
+            <div id="status" class="flex items-center gap-2 text-xs">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-green-500">CONNEXION LOCALE • STABLE</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- CHAT -->
+    <div id="chat-container" 
+         class="flex-1 overflow-y-auto custom-scrollbar border border-green-900/50 p-6 bg-black/70 rounded-xl scanline space-y-6">
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="mt-6">
+        <div class="flex gap-3 items-end">
+            <select id="preset" 
+                    class="bg-black border border-green-700 text-green-400 px-4 py-3 focus:border-cyan-400 outline-none rounded-lg">
+                <option value="cyber">⚡ Cyber-Expert</option>
+                <option value="pentest">💀 Pentester</option>
+                <option value="dev">💻 Dev-Master</option>
+                <option value="default">🧠 Mode Neutre</option>
+            </select>
+
+            <input type="text" id="userInput"
+                   class="flex-1 bg-black border border-green-700 focus:border-cyan-400 outline-none px-5 py-4 rounded-lg text-green-300 placeholder-green-700"
+                   placeholder="Entrer votre commande...">
+
+            <button onclick="sendRequest()" 
+                    class="bg-green-600 hover:bg-green-500 active:bg-green-700 px-8 py-4 font-bold tracking-widest transition-all duration-200 flex items-center gap-2 rounded-lg">
+                <i class="fas fa-bolt"></i>
+                EXECUTE
+            </button>
+        </div>
+
+        <div class="text-[10px] text-green-700 mt-2 flex justify-between">
+            <span>Appuyez sur <span class="text-green-500">ENTRÉE</span> pour exécuter</span>
+            <span onclick="clearChat()" class="cursor-pointer hover:text-red-400 transition-colors">EFFACER TERMINAL</span>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('userInput');
+        const presetSelect = document.getElementById('preset');
+
+        // Historique des messages
+        let messages = [];
+
+        function addMessage(role, content) {
+            const isUser = role === 'user';
+            
+            const html = `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="${isUser ? 'message-user' : 'message-assistant'} max-w-[85%] p-4 rounded-xl">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-bold ${isUser ? 'text-green-400' : 'text-cyan-400'}">
+                                ${isUser ? '[INGÉNIEUR]' : '[APEX]' }
+                            </span>
+                            <span class="text-[10px] text-green-700">${new Date().toLocaleTimeString('fr-FR')}</span>
+                        </div>
+                        <div class="text-sm leading-relaxed whitespace-pre-wrap">
+                            ${content}
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatContainer.innerHTML += html;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            chatContainer.innerHTML += `
+                <div id="${id}" class="flex justify-start">
+                    <div class="bg-black/70 border border-cyan-900 p-4 rounded-xl">
+                        <span class="text-cyan-400 text-sm">APEX réfléchit</span>
+                        <span class="animate-pulse">...</span>
+                    </div>
+                </div>
+            `;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return id;
+        }
+
+        async function sendRequest() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Ajouter message utilisateur
+            addMessage('user', message);
+            const currentMessage = message;
+            userInput.value = '';
+
+            // Ajouter indicateur de réflexion
+            const typingId = addTypingIndicator();
+
+            try {
+                const systemPrompts = {
+                    cyber: "Tu es un expert en cybersécurité avec un style cyberpunk très direct.",
+                    pentest: "Tu es un pentester expérimenté, précis et technique. Réponds comme un professionnel du hacking éthique.",
+                    dev: "Tu es un développeur full-stack senior, expert en architecture et code propre.",
+                    default: "Tu es un assistant IA avancé."
+                };
+
+                const system = systemPrompts[presetSelect.value] || systemPrompts.default;
+
+                const response = await fetch('http://localhost:11434/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "mistral",
+                        messages: [
+                            { role: "system", content: system },
+                            ...messages,
+                            { role: "user", content: currentMessage }
+                        ],
+                        stream: false,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) throw new Error("Erreur serveur");
+
+                const data = await response.json();
+                const reply = data.message.content;
+
+                // Supprimer l'indicateur de typing
+                document.getElementById(typingId).remove();
+
+                // Ajouter réponse
+                addMessage('assistant', reply);
+
+                // Sauvegarder dans l'historique
+                messages.push({ role: "user", content: currentMessage });
+                messages.push({ role: "assistant", content: reply });
+
+                // Garder seulement les 20 derniers messages
+                if (messages.length > 20) messages = messages.slice(-20);
+
+            } catch (e) {
+                document.getElementById(typingId).remove();
+                chatContainer.innerHTML += `
+                    <div class="text-red-500 text-sm p-4 border border-red-900 rounded-xl">
+                        ⚠️ ERREUR DE CONNEXION À LA STATION LOCALE<br>
+                        <span class="text-red-400/70">Vérifie qu'Ollama est bien lancé sur le port 11434.</span>
+                    </div>`;
+            }
+        }
+
+        function clearChat() {
+            if (confirm("Effacer tout le terminal ?")) {
+                chatContainer.innerHTML = '';
+                messages = [];
+            }
+        }
+
+        // Envoi avec la touche Entrée
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendRequest();
+            }
+        });
+
+        // Focus automatique
+        window.onload = () => userInput.focus();
+    </script>
+</body>
+</html>
