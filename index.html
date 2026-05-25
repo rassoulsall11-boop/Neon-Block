@@ -1,1 +1,1351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Station APEX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;--bg4:#383838;
+  --sidebar:#111111;--border:rgba(255,255,255,0.08);
+  --text:#e8e8e8;--text2:#a0a0a0;--text3:#666;
+  --accent:#4f8ef7;--accent2:#3d7ae8;
+  --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--purple:#a855f7;
+  --r:10px;--font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;overflow:hidden}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:260px;background:var(--sidebar);display:flex;flex-direction:column;border-right:1px solid var(--border);flex-shrink:0;transition:width .28s cubic-bezier(.4,0,.2,1),opacity .2s,border .2s}
+.sidebar.collapsed{width:0;overflow:hidden;opacity:0;pointer-events:none;border:none}
+/* Floating re-open tab */
+.sb-reopen{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:60;background:var(--accent);border:none;border-radius:0 8px 8px 0;width:20px;height:52px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:2px 0 10px rgba(0,0,0,.35);transition:width .15s,background .15s}
+.sb-reopen.visible{display:flex}
+.sb-reopen:hover{width:26px;background:var(--accent2)}
+.sb-reopen i{color:#fff;font-size:11px}
+
+.sb-top{padding:12px;border-bottom:1px solid var(--border)}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:6px 4px 10px}
+.sb-logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;flex-shrink:0}
+.sb-logo-text{font-weight:600;font-size:15px;letter-spacing:.02em}
+.sb-logo-sub{font-size:10px;color:var(--text3);letter-spacing:.05em}
+
+.new-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);cursor:pointer;font-size:13px;font-family:var(--font);font-weight:500;transition:background .15s}
+.new-btn:hover{background:var(--accent2)}
+
+/* MODE SELECTOR */
+.mode-section{padding:10px 10px 0}
+.mode-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:0 4px 6px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px}
+.mode-chip{padding:7px 6px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.mode-chip:hover{background:var(--bg3);color:var(--text);border-color:rgba(255,255,255,.18)}
+.mode-chip.active{background:rgba(79,142,247,.15);border-color:var(--accent);color:var(--accent)}
+.mode-chip .mi{font-size:16px}
+
+/* CONVERSATIONS */
+.conv-section{flex:1;overflow-y:auto;padding:8px}
+.conv-section::-webkit-scrollbar{width:4px}
+.conv-section::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.conv-group-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 4px 4px}
+.conv-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;position:relative;group:true;transition:background .15s}
+.conv-item:hover{background:var(--bg3)}
+.conv-item.active{background:var(--bg4)}
+.conv-icon{font-size:13px;flex-shrink:0;opacity:.7}
+.conv-name{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
+.conv-item.active .conv-name{color:var(--text)}
+.conv-actions{display:none;gap:2px;flex-shrink:0}
+.conv-item:hover .conv-actions{display:flex}
+.conv-act-btn{width:22px;height:22px;border-radius:5px;border:none;background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:background .12s,color .12s}
+.conv-act-btn:hover{background:var(--bg);color:var(--text)}
+.conv-act-btn.del:hover{color:var(--red)}
+
+/* RENAME INPUT */
+.conv-rename{flex:1;background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-size:12px;padding:2px 6px;border-radius:5px;font-family:var(--font);outline:none}
+
+/* API KEY */
+.sb-footer{padding:10px;border-top:1px solid var(--border)}
+.api-row{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+.api-row input{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:var(--mono)}
+.api-row input::placeholder{color:var(--text3)}
+.api-row label{font-size:10px;color:var(--text3);white-space:nowrap}
+.api-save-btn{padding:3px 8px;border-radius:5px;border:none;background:var(--accent);color:#fff;font-size:11px;cursor:pointer;font-family:var(--font)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* TOPBAR */
+.topbar{padding:10px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg)}
+.toggle-sb{width:32px;height:32px;border-radius:7px;border:none;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .15s,color .15s}
+.toggle-sb:hover{background:var(--bg3);color:var(--text)}
+.topbar-title{font-weight:600;font-size:15px;flex:1}
+.topbar-mode{font-size:12px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 10px;border-radius:20px}
+.icon-btn{width:32px;height:32px;border-radius:7px;border:none;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .15s,color .15s}
+.icon-btn:hover{background:var(--bg3);color:var(--text)}
+
+/* CHAT SPLIT (chat + artifact panel) */
+.chat-split{flex:1;display:flex;overflow:hidden}
+
+/* CHAT AREA */
+.chat-area{flex:1;overflow-y:auto;padding:28px 0;scroll-behavior:smooth}
+.chat-area::-webkit-scrollbar{width:5px}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* WELCOME */
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:40px;text-align:center}
+.welcome-logo{width:52px;height:52px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.welcome h1{font-size:26px;font-weight:600}
+.welcome p{color:var(--text2);max-width:380px;font-size:14px}
+.suggestions{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:480px;width:100%;margin-top:4px}
+.sug-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;text-align:left;font-size:12.5px;color:var(--text2);transition:all .15s}
+.sug-card:hover{background:var(--bg3);color:var(--text);border-color:rgba(255,255,255,.18)}
+.sug-card .si{font-size:15px;margin-bottom:5px;display:block}
+
+/* MESSAGES */
+.msg-wrap{max-width:700px;margin:0 auto;padding:0 20px}
+.message{display:flex;gap:14px;padding:14px 0}
+.message.user{flex-direction:row-reverse}
+.msg-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-weight:700}
+.message.user .msg-avatar{background:#5865f2;color:#fff}
+.message.assistant .msg-avatar{background:var(--accent);color:#fff}
+.msg-content{flex:1;min-width:0}
+.msg-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.message.user .msg-header{flex-direction:row-reverse}
+.msg-name{font-size:12.5px;font-weight:600}
+.msg-time{font-size:10.5px;color:var(--text3)}
+.msg-body{font-size:14.5px;line-height:1.72;color:var(--text)}
+.message.user .msg-body{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:inline-block;text-align:left}
+.msg-actions{display:flex;gap:3px;margin-top:6px;opacity:0;transition:opacity .15s}
+.message:hover .msg-actions{opacity:1}
+.act-btn{padding:3px 8px;border-radius:5px;border:none;background:transparent;color:var(--text3);font-size:11.5px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .12s,color .12s;font-family:var(--font)}
+.act-btn:hover{background:var(--bg3);color:var(--text)}
+
+/* CODE BLOCKS */
+.code-block{background:#141414;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin:10px 0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:#0e0e0e;border-bottom:1px solid var(--border)}
+.code-lang{font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.code-header-actions{display:flex;gap:4px}
+.copy-btn{font-size:11px;color:var(--text3);background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;transition:background .12s,color .12s;font-family:var(--font)}
+.copy-btn:hover{background:var(--bg3);color:var(--text)}
+.artifact-btn{font-size:11px;color:var(--accent);background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.25);cursor:pointer;display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;transition:all .12s;font-family:var(--font)}
+.artifact-btn:hover{background:rgba(79,142,247,.2)}
+.code-body{padding:14px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#d4d4d4;white-space:pre}
+.code-body::-webkit-scrollbar{height:4px}
+.code-body::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* TYPING */
+.typing-dots{display:flex;gap:4px;padding:4px 0}
+.typing-dots span{width:6px;height:6px;background:var(--text3);border-radius:50%;animation:bounce 1.4s infinite ease-in-out}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+
+/* ── ARTIFACT PANEL ── */
+.artifact-panel{width:380px;border-left:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;transition:width .25s,opacity .25s;flex-shrink:0}
+.artifact-panel.hidden{width:0;opacity:0;overflow:hidden;border:none}
+.ap-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.ap-title{font-size:14px;font-weight:600;flex:1}
+.ap-close{width:26px;height:26px;border-radius:6px;border:none;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
+.ap-close:hover{background:var(--bg3);color:var(--text)}
+.artifact-list{flex:1;overflow-y:auto;padding:10px}
+.artifact-list::-webkit-scrollbar{width:4px}
+.artifact-list::-webkit-scrollbar-thumb{background:var(--border)}
+.artifact-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--text3);text-align:center;font-size:13px;padding:20px}
+.artifact-empty i{font-size:30px;opacity:.4}
+.artifact-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;transition:border-color .15s}
+.artifact-card:hover{border-color:rgba(255,255,255,.18)}
+.ac-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ac-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ac-icon.html{background:rgba(239,68,68,.15);color:#ef4444}
+.ac-icon.python{background:rgba(34,197,94,.15);color:#22c55e}
+.ac-icon.js{background:rgba(245,158,11,.15);color:#f59e0b}
+.ac-icon.md{background:rgba(168,85,247,.15);color:#a855f7}
+.ac-icon.json{background:rgba(79,142,247,.15);color:#4f8ef7}
+.ac-icon.txt{background:rgba(160,160,160,.15);color:#a0a0a0}
+.ac-name{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-time{font-size:10px;color:var(--text3)}
+.ac-preview{font-family:var(--mono);font-size:10.5px;color:var(--text3);background:var(--bg);border-radius:6px;padding:7px 9px;overflow:hidden;max-height:60px;line-height:1.5;white-space:pre;overflow-x:hidden;text-overflow:ellipsis}
+.ac-actions{display:flex;gap:5px;margin-top:10px}
+.ac-btn{flex:1;padding:6px;border-radius:7px;border:none;font-size:12px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:5px;transition:background .12s}
+.ac-btn.dl{background:var(--accent);color:#fff}
+.ac-btn.dl:hover{background:var(--accent2)}
+.ac-btn.prev{background:var(--bg4);color:var(--text2)}
+.ac-btn.prev:hover{background:var(--bg);color:var(--text)}
+.ac-btn.del{background:rgba(239,68,68,.1);color:var(--red)}
+.ac-btn.del:hover{background:rgba(239,68,68,.2)}
+
+/* PREVIEW MODAL */
+.preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px)}
+.preview-overlay.hidden{display:none}
+.preview-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:700px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.preview-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.preview-name{font-size:14px;font-weight:600;flex:1}
+.preview-content{flex:1;overflow:auto;padding:16px;font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--text2);white-space:pre-wrap}
+.preview-content::-webkit-scrollbar{width:5px}
+.preview-content::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* INPUT ZONE */
+.input-zone{padding:12px 18px 16px;background:var(--bg);flex-shrink:0}
+.input-container{max-width:700px;margin:0 auto}
+.input-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;transition:border-color .15s}
+.input-box:focus-within{border-color:rgba(255,255,255,.22)}
+.input-row{display:flex;align-items:flex-end;padding:11px 14px;gap:10px}
+textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14.5px;font-family:var(--font);resize:none;line-height:1.6;max-height:180px;min-height:22px;overflow-y:auto}
+textarea::placeholder{color:var(--text3)}
+textarea::-webkit-scrollbar{width:4px}
+textarea::-webkit-scrollbar-thumb{background:var(--border)}
+.send-btn{width:32px;height:32px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .15s,transform .1s;flex-shrink:0}
+.send-btn:hover{background:var(--accent2)}
+.send-btn:active{transform:scale(.93)}
+.send-btn:disabled{background:var(--bg4);cursor:not-allowed}
+.input-toolbar{display:flex;align-items:center;padding:5px 10px 10px;gap:2px;flex-wrap:wrap}
+.tb-btn{padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .12s,color .12s;font-family:var(--font)}
+.tb-btn:hover{background:var(--bg3);color:var(--text2)}
+.tb-btn.active{color:var(--accent);background:rgba(79,142,247,.1)}
+.input-hint{text-align:center;font-size:11px;color:var(--text3);margin-top:8px}
+
+/* CAPABILITIES BADGE */
+.cap-row{display:flex;gap:5px;flex-wrap:wrap;padding:0 0 4px 2px}
+.cap-badge{font-size:10.5px;padding:2px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text3);background:transparent}
+.cap-badge.on{border-color:rgba(79,142,247,.4);color:var(--accent);background:rgba(79,142,247,.08)}
+
+/* CONTEXT MENU */
+.ctx-menu{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:4px;z-index:200;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.ctx-menu.hidden{display:none}
+.ctx-item{padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;color:var(--text2);transition:background .12s,color .12s}
+.ctx-item:hover{background:var(--bg4);color:var(--text)}
+.ctx-item.danger{color:var(--red)}
+.ctx-item.danger:hover{background:rgba(239,68,68,.1)}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+
+/* PROSE */
+.msg-body p{margin-bottom:10px}
+.msg-body p:last-child{margin-bottom:0}
+.msg-body ul,.msg-body ol{padding-left:18px;margin-bottom:10px}
+.msg-body li{margin-bottom:3px}
+.msg-body strong{font-weight:600}
+.msg-body h1,.msg-body h2,.msg-body h3{font-weight:600;margin:14px 0 6px}
+.msg-body h1{font-size:19px}
+.msg-body h2{font-size:16px}
+.msg-body h3{font-size:14.5px}
+.msg-body code:not(.raw){background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12.5px}
+.msg-body a{color:var(--accent);text-decoration:none}
+.msg-body a:hover{text-decoration:underline}
+.msg-body blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--text2);margin:8px 0}
+.msg-body table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px}
+.msg-body th,.msg-body td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.msg-body th{background:var(--bg3);font-weight:600}
+
+/* STATUS */
+.status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ══ MOBILE ══ */
+@media(max-width:768px){
+  /* Sidebar: tiroir overlay pleine hauteur */
+  .sidebar{
+    position:fixed;left:0;top:0;height:100vh;z-index:80;
+    width:280px!important;
+    transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .25s;
+    opacity:0;border-right:1px solid var(--border)!important;
+    box-shadow:4px 0 24px rgba(0,0,0,.5);
+    overflow:auto!important;pointer-events:none
+  }
+  .sidebar.mobile-open{
+    transform:translateX(0)!important;
+    opacity:1!important;pointer-events:all
+  }
+  /* Overlay sombre derrière la sidebar */
+  .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:75;backdrop-filter:blur(2px)}
+  .sb-overlay.visible{display:block}
+  /* Cacher le bouton flottant sur mobile (on utilise le ☰ de la topbar) */
+  .sb-reopen{display:none!important}
+  /* Topbar plus compacte */
+  .topbar{padding:8px 12px;gap:6px}
+  .topbar-title{font-size:13px}
+  .topbar-mode{display:none}
+  /* Chat padding réduit */
+  .msg-wrap{padding:0 10px}
+  .message{gap:8px;padding:10px 0}
+  .msg-avatar{width:26px;height:26px;font-size:11px}
+  .msg-body{font-size:14px}
+  /* Welcome screen */
+  .welcome{padding:24px 16px;gap:16px}
+  .welcome h1{font-size:22px}
+  .suggestions{grid-template-columns:1fr;max-width:100%}
+  /* Input zone */
+  .input-zone{padding:8px 10px 12px}
+  .input-toolbar{padding:4px 8px 8px;gap:2px;overflow-x:auto;flex-wrap:nowrap}
+  .tb-btn{padding:4px 8px;font-size:11px;white-space:nowrap;flex-shrink:0}
+  .input-row{padding:8px 10px}
+  textarea{font-size:16px} /* évite le zoom iOS */
+  .send-btn{width:36px;height:36px}
+  /* Artifact panel: tiroir depuis la droite */
+  .artifact-panel{
+    position:fixed;right:0;top:0;height:100vh;z-index:80;
+    width:90vw!important;max-width:340px;
+    transform:translateX(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    border-left:1px solid var(--border);
+    box-shadow:-4px 0 24px rgba(0,0,0,.4)
+  }
+  .artifact-panel:not(.hidden){transform:translateX(0)!important}
+  /* Code blocks */
+  .code-body{font-size:11.5px}
+  .code-header{flex-wrap:wrap;gap:4px}
+  /* Mode grid dans sidebar */
+  .mode-grid{grid-template-columns:1fr 1fr}
+  /* Preview modal */
+  .preview-box{max-width:95vw;max-height:85vh}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="sb-overlay" id="sbOverlay" onclick="toggleSidebar()"></div>
+<!-- ══ SIDEBAR ══ -->
+<button class="sb-reopen" id="sbReopen" onclick="toggleSidebar()" title="Ouvrir le panneau">
+  <i class="fas fa-chevron-right"></i>
+</button>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-top">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">⚡</div>
+      <div style="flex:1">
+        <div class="sb-logo-text">Station APEX</div>
+        <div class="sb-logo-sub"><span class="status-dot"></span>Gemini AI</div>
+      </div>
+      <button onclick="toggleSidebar()" title="Fermer le panneau"
+        style="width:26px;height:26px;border-radius:6px;border:none;background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:background .15s,color .15s"
+        onmouseover="this.style.background='var(--bg3)';this.style.color='var(--text)'"
+        onmouseout="this.style.background='transparent';this.style.color='var(--text3)'">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+    </div>
+    <button class="new-btn" onclick="newConversation()">
+      <i class="fas fa-plus"></i> Nouvelle conversation
+    </button>
+  </div>
+
+  <!-- API KEY — TOP -->
+  <div style="padding:12px;border-bottom:1px solid var(--border)">
+    <div style="background:rgba(79,142,247,0.08);border:1.5px solid rgba(79,142,247,0.4);border-radius:10px;padding:11px 12px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <span style="font-size:16px">🔑</span>
+        <span style="font-size:12.5px;font-weight:600;color:var(--text)">Clé API Gemini</span>
+        <span id="apiStatusDot" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,0.15);color:#ef4444;font-weight:500">Non configurée</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="password" id="apiKeyInput" placeholder="AIza…"
+          style="flex:1;background:var(--bg);border:1px solid rgba(79,142,247,0.35);border-radius:7px;padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none;min-width:0;transition:border-color .15s"
+          oninput="updateApiStatus()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(79,142,247,0.35)'" value="">
+        <button onclick="saveApiKey()"
+          style="padding:8px 14px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font);transition:background .15s"
+          onmouseover="this.style.background='var(--accent2)'" onmouseout="this.style.background='var(--accent)'">
+          Sauvegarder
+        </button>
+      </div>
+      <a href="https://aistudio.google.com/apikey" target="_blank"
+        style="display:block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;text-align:center;opacity:.85">
+        ✦ Obtenir une clé gratuite sur Google AI Studio →
+      </a>
+    </div>
+  </div>
+
+  <!-- MODE SELECTOR -->
+  <div class="mode-section">
+    <div class="mode-label">Mode IA</div>
+    <div class="mode-grid">
+      <div class="mode-chip active" data-mode="assistant" onclick="setMode(this,'assistant')">
+        <span class="mi">🧠</span>Assistant
+      </div>
+      <div class="mode-chip" data-mode="dev" onclick="setMode(this,'dev')">
+        <span class="mi">💻</span>Développeur
+      </div>
+      <div class="mode-chip" data-mode="cyber" onclick="setMode(this,'cyber')">
+        <span class="mi">🔒</span>Cybersec
+      </div>
+      <div class="mode-chip" data-mode="creative" onclick="setMode(this,'creative')">
+        <span class="mi">✨</span>Créatif
+      </div>
+      <div class="mode-chip" data-mode="analyst" onclick="setMode(this,'analyst')">
+        <span class="mi">📊</span>Analyste
+      </div>
+      <div class="mode-chip" data-mode="tutor" onclick="setMode(this,'tutor')">
+        <span class="mi">📚</span>Tuteur
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVERSATIONS -->
+  <div class="conv-section" id="convList">
+    <div class="conv-group-label">Conversations</div>
+    <!-- populated by JS -->
+  </div>
+
+  <div class="sb-footer">
+    <div style="font-size:11px;color:var(--text3);text-align:center">Station APEX · Gemini 2.0 Flash</div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="toggle-sb" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="topbar-title" id="topTitle">Station APEX</div>
+    <span class="topbar-mode" id="topMode">🧠 Assistant</span>
+    <button class="icon-btn" onclick="toggleArtifactPanel()" title="Artefacts" id="apBtn">
+      <i class="fas fa-cube"></i>
+    </button>
+    <button class="icon-btn" onclick="clearCurrentChat()" title="Effacer"><i class="fas fa-trash-alt"></i></button>
+  </div>
+
+  <!-- SPLIT: CHAT + ARTIFACT PANEL -->
+  <div class="chat-split">
+
+    <!-- CHAT AREA -->
+    <div class="chat-area" id="chatArea">
+      <div class="welcome" id="welcomeScreen">
+        <div class="welcome-logo">⚡</div>
+        <div>
+          <h1>Station APEX</h1>
+          <p style="margin-top:6px">Interface IA propulsée par <strong>Google Gemini</strong>. Entrez votre clé API pour commencer.</p>
+        </div>
+        <div class="cap-row" style="justify-content:center">
+          <span class="cap-badge on">🌐 Web Search</span>
+          <span class="cap-badge on">💻 Code</span>
+          <span class="cap-badge on">📄 Artefacts</span>
+          <span class="cap-badge on">🖼️ Vision</span>
+          <span class="cap-badge on">📊 Analyse</span>
+        </div>
+        <div class="suggestions">
+          <div class="sug-card" onclick="fillInput('Écris un script Python pour analyser les logs Apache et détecter des anomalies')">
+            <span class="si">💻</span>Script d'analyse de logs
+          </div>
+          <div class="sug-card" onclick="fillInput('Crée une page HTML responsive pour un portfolio de développeur')">
+            <span class="si">🌐</span>Page portfolio HTML
+          </div>
+          <div class="sug-card" onclick="fillInput('Quelles sont les dernières actualités en cybersécurité ?')">
+            <span class="si">🔒</span>Actu cybersécurité
+          </div>
+          <div class="sug-card" onclick="fillInput('Explique-moi le machine learning avec des exemples concrets')">
+            <span class="si">🧠</span>Cours machine learning
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTIFACT PANEL -->
+    <div class="artifact-panel hidden" id="artifactPanel">
+      <div class="ap-header">
+        <i class="fas fa-cube" style="color:var(--accent);font-size:14px"></i>
+        <div class="ap-title">Artefacts</div>
+        <button class="ap-close" onclick="toggleArtifactPanel()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="artifact-list" id="artifactList">
+        <div class="artifact-empty" id="artifactEmpty">
+          <i class="fas fa-cube"></i>
+          <p>Les fichiers générés<br>apparaîtront ici</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end chat-split -->
+
+  <!-- INPUT ZONE -->
+  <div class="input-zone">
+    <div class="input-container">
+      <div class="input-box">
+        <div class="input-toolbar">
+          <button class="tb-btn active" id="webBtn" onclick="toggleCap('web')" title="Recherche web">
+            <i class="fas fa-globe"></i> Web
+          </button>
+          <button class="tb-btn active" id="codeBtn" onclick="toggleCap('code')" title="Mode code">
+            <i class="fas fa-code"></i> Code
+          </button>
+          <button class="tb-btn active" id="artifactCapBtn" onclick="toggleCap('artifact')" title="Générer des artefacts">
+            <i class="fas fa-cube"></i> Artefacts
+          </button>
+          <button class="tb-btn" id="visionBtn" onclick="triggerImageUpload()" title="Envoyer une image">
+            <i class="fas fa-image"></i> Image
+          </button>
+          <button class="tb-btn" id="fileBtn" onclick="triggerFileUpload()" title="Joindre un fichier (PDF, TXT, CSV, code...)">
+            <i class="fas fa-paperclip"></i> Fichier
+          </button>
+          <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+          <input type="file" id="fileInput" accept=".txt,.csv,.json,.md,.py,.js,.ts,.html,.css,.sql,.sh,.bash,.java,.cpp,.c,.rs,.go,.php,.xml,.yaml,.yml,.log,.pdf" style="display:none" onchange="handleFileUpload(event)">
+        </div>
+        <div class="input-row">
+          <div id="imagePreviewWrap" style="display:none;margin-bottom:6px">
+            <div style="position:relative;display:inline-block">
+              <img id="imagePreview" style="max-height:80px;border-radius:7px;border:1px solid var(--border)">
+              <button onclick="clearImage()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
+          <div id="filePreviewWrap" style="display:none;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;max-width:300px">
+              <span id="filePreviewIcon" style="font-size:18px">📄</span>
+              <div style="flex:1;min-width:0">
+                <div id="filePreviewName" style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+                <div id="filePreviewSize" style="font-size:10px;color:var(--text3)"></div>
+              </div>
+              <button onclick="clearFile()" style="width:18px;height:18px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
+          <textarea id="userInput" placeholder="Envoyer un message à APEX..." rows="1" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+      <p class="input-hint">Station APEX · Gemini 2.0 Flash · <span onclick="clearCurrentChat()" style="cursor:pointer;text-decoration:underline">Effacer</span></p>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu hidden" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxRename()"><i class="fas fa-pen" style="width:14px"></i> Renommer</div>
+  <div class="ctx-item" onclick="ctxDuplicate()"><i class="fas fa-copy" style="width:14px"></i> Dupliquer</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()"><i class="fas fa-trash" style="width:14px"></i> Supprimer</div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div class="preview-overlay hidden" id="previewOverlay" onclick="closePreview(event)">
+  <div class="preview-box">
+    <div class="preview-head">
+      <i class="fas fa-file-code" style="color:var(--accent)"></i>
+      <div class="preview-name" id="previewName"></div>
+      <button class="icon-btn" onclick="closePreviewDirect()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="preview-content" id="previewContent"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let apiKey = localStorage.getItem('apex_gemini_key') || '';
+let conversations = JSON.parse(localStorage.getItem('apex_conversations') || '[]');
+let currentConvId = null;
+let artifacts = []; // per-session artifacts (also saved per conversation)
+let imageData = null; // base64 image for vision
+let capabilities = { web: true, code: true, artifact: true };
+let currentMode = 'assistant';
+let ctxTargetId = null;
+let sidebarOpen = true;
+let artifactPanelOpen = false;
+
+const MODES = {
+  assistant: { label: '🧠 Assistant', sys: "Tu es un assistant IA avancé, expert et polyvalent. Réponds en français avec précision et clarté. Utilise le markdown pour structurer tes réponses." },
+  dev: { label: '💻 Développeur', sys: "Tu es un développeur full-stack senior expert. Écris du code propre, commenté, avec les meilleures pratiques. Génère systématiquement des artefacts téléchargeables pour tout code significatif. Utilise le markdown." },
+  cyber: { label: '🔒 Cybersec', sys: "Tu es un expert en cybersécurité et pentesting éthique. Fournis des informations techniques précises. Pour les scripts et outils, génère des artefacts téléchargeables. Toujours ajouter des avertissements éthiques." },
+  creative: { label: '✨ Créatif', sys: "Tu es un assistant créatif expert en rédaction, storytelling, design et idéation. Génère du contenu original et inspirant. Pour les longs textes, génère des artefacts markdown téléchargeables." },
+  analyst: { label: '📊 Analyste', sys: "Tu es un analyste de données expert. Tu analyses, structures et visualises l'information. Tu génères des rapports structurés et des scripts d'analyse téléchargeables." },
+  tutor: { label: '📚 Tuteur', sys: "Tu es un tuteur pédagogue expert. Tu expliques avec des exemples concrets, des analogies, et des exercices pratiques. Adapte ton niveau à l'utilisateur." }
+};
+
+// ── Init ──
+if (apiKey) document.getElementById('apiKeyInput').value = apiKey;
+if (conversations.length === 0) createNewConversation(false);
+else { currentConvId = conversations[0].id; }
+renderConversationList();
+loadConversation(currentConvId);
+updateApiStatus();
+
+// ══════════════════════════════════════
+//  API KEY
+// ══════════════════════════════════════
+function saveApiKey() {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('apex_gemini_key', apiKey);
+  updateApiStatus();
+  showToast('Clé API sauvegardée ✓', 'green');
+}
+
+function updateApiStatus() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  const dot = document.getElementById('apiStatusDot');
+  if (!dot) return;
+  if (val.length > 10) {
+    dot.textContent = '✓ Configurée';
+    dot.style.background = 'rgba(34,197,94,0.15)';
+    dot.style.color = '#22c55e';
+  } else {
+    dot.textContent = 'Non configurée';
+    dot.style.background = 'rgba(239,68,68,0.15)';
+    dot.style.color = '#ef4444';
+  }
+}
+
+// ══════════════════════════════════════
+//  CONVERSATIONS
+// ══════════════════════════════════════
+function createNewConversation(activate = true) {
+  const conv = {
+    id: Date.now().toString(),
+    name: 'Nouvelle conversation',
+    mode: currentMode,
+    messages: [],
+    artifacts: [],
+    created: Date.now()
+  };
+  conversations.unshift(conv);
+  saveConversations();
+  if (activate) {
+    currentConvId = conv.id;
+    artifacts = [];
+    renderConversationList();
+    loadConversation(conv.id);
+  }
+  return conv;
+}
+
+function newConversation() {
+  createNewConversation(true);
+  if (isMobile() && sidebarOpen) toggleSidebar();
+}
+
+function saveConversations() {
+  localStorage.setItem('apex_conversations', JSON.stringify(conversations));
+}
+
+function getCurrentConv() {
+  return conversations.find(c => c.id === currentConvId);
+}
+
+function loadConversation(id) {
+  currentConvId = id;
+  const conv = getCurrentConv();
+  if (!conv) return;
+  artifacts = conv.artifacts || [];
+
+  // set mode
+  currentMode = conv.mode || 'assistant';
+  document.querySelectorAll('.mode-chip').forEach(c => c.classList.toggle('active', c.dataset.mode === currentMode));
+  document.getElementById('topMode').textContent = MODES[currentMode]?.label || '🧠 Assistant';
+
+  // clear chat
+  const chatArea = document.getElementById('chatArea');
+  chatArea.innerHTML = '';
+
+  if (conv.messages.length === 0) {
+    chatArea.appendChild(buildWelcome());
+  } else {
+    conv.messages.forEach(m => renderMessage(m.role, m.content, false));
+  }
+
+  renderArtifacts();
+  document.getElementById('topTitle').textContent = conv.name;
+  renderConversationList();
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function renderConversationList() {
+  const list = document.getElementById('convList');
+  list.innerHTML = '<div class="conv-group-label">Conversations</div>';
+  conversations.forEach(conv => {
+    const div = document.createElement('div');
+    div.className = 'conv-item' + (conv.id === currentConvId ? ' active' : '');
+    div.dataset.id = conv.id;
+    div.innerHTML = `
+      <span class="conv-icon">${getModeIcon(conv.mode)}</span>
+      <span class="conv-name" id="cname-${conv.id}">${escHtml(conv.name)}</span>
+      <div class="conv-actions">
+        <button class="conv-act-btn" onclick="startRename(event,'${conv.id}')" title="Renommer"><i class="fas fa-pen"></i></button>
+        <button class="conv-act-btn del" onclick="deleteConversation(event,'${conv.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+      </div>`;
+    div.onclick = (e) => { if (!e.target.closest('.conv-actions')) selectConversation(conv.id); };
+    div.oncontextmenu = (e) => { e.preventDefault(); showCtxMenu(e, conv.id); };
+    list.appendChild(div);
+  });
+}
+
+function getModeIcon(mode) {
+  const icons = { assistant:'🧠', dev:'💻', cyber:'🔒', creative:'✨', analyst:'📊', tutor:'📚' };
+  return icons[mode] || '💬';
+}
+
+function selectConversation(id) {
+  if (id === currentConvId) { if (isMobile()) toggleSidebar(); return; }
+  const cur = getCurrentConv();
+  if (cur) cur.artifacts = artifacts;
+  saveConversations();
+  loadConversation(id);
+  if (isMobile()) toggleSidebar();
+}
+
+function deleteConversation(e, id) {
+  e.stopPropagation();
+  if (!confirm('Supprimer cette conversation ?')) return;
+  conversations = conversations.filter(c => c.id !== id);
+  saveConversations();
+  if (currentConvId === id) {
+    if (conversations.length === 0) createNewConversation(false);
+    currentConvId = conversations[0].id;
+    loadConversation(currentConvId);
+  }
+  renderConversationList();
+}
+
+function startRename(e, id) {
+  e.stopPropagation();
+  const nameEl = document.getElementById('cname-' + id);
+  const conv = conversations.find(c => c.id === id);
+  if (!conv || !nameEl) return;
+  const input = document.createElement('input');
+  input.className = 'conv-rename';
+  input.value = conv.name;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  const finish = () => {
+    const val = input.value.trim() || 'Conversation';
+    conv.name = val;
+    saveConversations();
+    renderConversationList();
+    if (currentConvId === id) document.getElementById('topTitle').textContent = val;
+  };
+  input.onblur = finish;
+  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = conv.name; input.blur(); } };
+}
+
+// ── CONTEXT MENU ──
+function showCtxMenu(e, id) {
+  ctxTargetId = id;
+  const m = document.getElementById('ctxMenu');
+  m.style.left = e.clientX + 'px';
+  m.style.top = e.clientY + 'px';
+  m.classList.remove('hidden');
+}
+function ctxRename() { document.getElementById('ctxMenu').classList.add('hidden'); const conv = conversations.find(c=>c.id===ctxTargetId); if(conv) startRename({stopPropagation:()=>{}}, ctxTargetId); }
+function ctxDuplicate() {
+  document.getElementById('ctxMenu').classList.add('hidden');
+  const src = conversations.find(c=>c.id===ctxTargetId);
+  if (!src) return;
+  const dup = JSON.parse(JSON.stringify(src));
+  dup.id = Date.now().toString();
+  dup.name = src.name + ' (copie)';
+  conversations.unshift(dup);
+  saveConversations();
+  renderConversationList();
+}
+function ctxDelete() { document.getElementById('ctxMenu').classList.add('hidden'); deleteConversation({stopPropagation:()=>{}}, ctxTargetId); }
+document.addEventListener('click', () => document.getElementById('ctxMenu').classList.add('hidden'));
+
+// ══════════════════════════════════════
+//  MODE
+// ══════════════════════════════════════
+function setMode(el, mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('topMode').textContent = MODES[mode]?.label || mode;
+  const conv = getCurrentConv();
+  if (conv) { conv.mode = mode; saveConversations(); }
+}
+
+// ══════════════════════════════════════
+//  CAPABILITIES
+// ══════════════════════════════════════
+function toggleCap(cap) {
+  capabilities[cap] = !capabilities[cap];
+  const ids = { web:'webBtn', code:'codeBtn', artifact:'artifactCapBtn' };
+  document.getElementById(ids[cap])?.classList.toggle('active', capabilities[cap]);
+}
+
+// ══════════════════════════════════════
+//  IMAGE
+// ══════════════════════════════════════
+let attachedFile = null; // { name, size, text, mimeType }
+
+function triggerImageUpload() { document.getElementById('imageInput').click(); }
+function triggerFileUpload()  { document.getElementById('fileInput').click(); }
+
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imageData = ev.target.result;
+    document.getElementById('imagePreview').src = imageData;
+    document.getElementById('imagePreviewWrap').style.display = 'block';
+    document.getElementById('visionBtn').classList.add('active');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage() {
+  imageData = null;
+  document.getElementById('imagePreviewWrap').style.display = 'none';
+  document.getElementById('visionBtn').classList.remove('active');
+  document.getElementById('imageInput').value = '';
+}
+
+const FILE_ICONS = {
+  pdf:'📕', txt:'📄', csv:'📊', json:'{}', md:'📝', py:'🐍', js:'⚡', ts:'📘',
+  html:'🌐', css:'🎨', sql:'🗄️', sh:'💲', bash:'💲', java:'☕', cpp:'⚙️',
+  c:'⚙️', rs:'🦀', go:'🐹', php:'🐘', xml:'📋', yaml:'📋', yml:'📋', log:'🗒️'
+};
+
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const maxSize = 2 * 1024 * 1024; // 2MB limit for text files
+  if (file.size > maxSize) { showToast('Fichier trop grand (max 2MB)', 'red'); return; }
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    attachedFile = {
+      name: file.name,
+      size: file.size,
+      text: ev.target.result,
+      mimeType: file.type || 'text/plain',
+      ext
+    };
+    // Show preview
+    document.getElementById('filePreviewIcon').textContent = FILE_ICONS[ext] || '📄';
+    document.getElementById('filePreviewName').textContent = file.name;
+    document.getElementById('filePreviewSize').textContent = formatFileSize(file.size);
+    document.getElementById('filePreviewWrap').style.display = 'block';
+    document.getElementById('fileBtn').classList.add('active');
+    showToast(`Fichier joint : ${file.name}`, 'green');
+  };
+  reader.onerror = () => showToast('Erreur de lecture du fichier', 'red');
+  reader.readAsText(file, 'UTF-8');
+}
+
+function clearFile() {
+  attachedFile = null;
+  document.getElementById('filePreviewWrap').style.display = 'none';
+  document.getElementById('fileBtn').classList.remove('active');
+  document.getElementById('fileInput').value = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+}
+
+// ══════════════════════════════════════
+//  SEND MESSAGE
+// ══════════════════════════════════════
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const msg = input.value.trim();
+  if (!msg && !imageData) return;
+  if (!apiKey) { showToast('⚠️ Entrez votre clé API Gemini', 'red'); return; }
+
+  const conv = getCurrentConv();
+  if (!conv) return;
+
+  // Hide welcome
+  document.getElementById('welcomeScreen')?.remove();
+
+  const userLabel = msg + (attachedFile ? `\n📎 ${attachedFile.name}` : '') || (imageData ? '🖼️ (image)' : '');
+  const userMsg = { role: 'user', content: userLabel };
+  conv.messages.push(userMsg);
+  renderMessage('user', userMsg.content, true);
+
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+
+  const typingId = addTyping();
+
+  try {
+    const systemPrompt = buildSystemPrompt();
+    const contents = buildContents(conv.messages, msg);
+    const reply = await callGemini(contents, systemPrompt);
+
+    document.getElementById(typingId)?.remove();
+
+    const assistantMsg = { role: 'assistant', content: reply };
+    conv.messages.push(assistantMsg);
+    if (conv.messages.length > 40) conv.messages = conv.messages.slice(-40);
+
+    // Auto-name conversation
+    if (conv.messages.length === 2 && conv.name === 'Nouvelle conversation') {
+      conv.name = msg.slice(0, 40) + (msg.length > 40 ? '…' : '');
+      document.getElementById('topTitle').textContent = conv.name;
+      renderConversationList();
+    }
+
+    renderMessage('assistant', reply, true);
+    extractAndSaveArtifacts(reply);
+    saveConversations();
+
+  } catch (err) {
+    document.getElementById(typingId)?.remove();
+    renderError(err.message);
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  clearImage();
+  clearFile();
+}
+
+function buildSystemPrompt() {
+  let sys = MODES[currentMode]?.sys || MODES.assistant.sys;
+  if (capabilities.artifact) {
+    sys += `\n\nRÈGLE ARTEFACTS: Quand tu génères du code (HTML, Python, JS, CSS, etc.) de plus de 15 lignes ou un texte structuré long (rapport, article, etc.), TOUJOURS l'inclure dans un bloc de code avec le bon langage spécifié. Exemples: \`\`\`html, \`\`\`python, \`\`\`javascript, \`\`\`markdown, \`\`\`json. Ces blocs seront automatiquement convertis en fichiers téléchargeables.`;
+  }
+  if (capabilities.web) {
+    sys += `\n\nINFO: Tu as accès aux informations récentes via Gemini. Quand on te demande des actualités ou infos récentes, utilise tes connaissances les plus récentes.`;
+  }
+  return sys;
+}
+
+function buildContents(messages, currentMsg) {
+  const contents = [];
+  // history (skip last user message which we handle separately)
+  const hist = messages.slice(0, -1);
+  hist.forEach(m => {
+    contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] });
+  });
+  // current message
+  const parts = [];
+  if (imageData) {
+    const [meta, b64] = imageData.split(',');
+    const mimeType = meta.match(/:(.*?);/)[1];
+    parts.push({ inlineData: { mimeType, data: b64 } });
+  }
+  // Inject file content as text context
+  let textMsg = currentMsg || '';
+  if (attachedFile) {
+    const truncated = attachedFile.text.slice(0, 30000); // ~30k chars max
+    textMsg = `[Fichier joint : ${attachedFile.name}]\n\`\`\`\n${truncated}\n\`\`\`\n\n${textMsg || 'Analyse ce fichier.'}`;
+  }
+  parts.push({ text: textMsg || 'Analyse cette image.' });
+  contents.push({ role: 'user', parts });
+  return contents;
+}
+
+async function callGemini(contents, systemPrompt) {
+  const useSearch = capabilities.web;
+  const body = {
+    contents,
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+  };
+  if (useSearch) {
+    body.tools = [{ googleSearch: {} }];
+  }
+
+  const model = imageData ? 'gemini-2.0-flash' : 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Erreur HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const candidate = data.candidates?.[0];
+  if (!candidate) throw new Error('Pas de réponse de Gemini');
+  if (candidate.finishReason === 'SAFETY') throw new Error('Réponse bloquée pour raisons de sécurité');
+
+  // Collect all text parts
+  const text = candidate.content?.parts?.filter(p => p.text).map(p => p.text).join('') || '';
+
+  // Append search attribution if present
+  let extra = '';
+  const searchMeta = data.candidates?.[0]?.groundingMetadata?.searchEntryPoint?.renderedContent;
+  // (we skip rendering the search widget, just note it was used)
+
+  return text + extra;
+}
+
+// ══════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════
+function renderMessage(role, content, scroll) {
+  const chatArea = document.getElementById('chatArea');
+  const isUser = role === 'user';
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+
+  const body = isUser
+    ? `<div class="msg-body">${escHtml(content)}</div>`
+    : `<div class="msg-body">${formatMd(content)}</div>`;
+
+  wrap.innerHTML = `
+    <div class="message ${role}">
+      <div class="msg-avatar">${isUser ? 'V' : '⚡'}</div>
+      <div class="msg-content">
+        <div class="msg-header">
+          <span class="msg-name">${isUser ? 'Vous' : 'APEX'}</span>
+          <span class="msg-time">${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        ${body}
+        ${!isUser ? `<div class="msg-actions">
+          <button class="act-btn" onclick="copyReply(this)"><i class="fas fa-copy"></i> Copier</button>
+          <button class="act-btn" onclick="regenLast()"><i class="fas fa-redo"></i> Régénérer</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  chatArea.appendChild(wrap);
+  if (scroll) chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addTyping() {
+  const id = 'typing-' + Date.now();
+  const chatArea = document.getElementById('chatArea');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap'; wrap.id = id;
+  wrap.innerHTML = `<div class="message assistant">
+    <div class="msg-avatar">⚡</div>
+    <div class="msg-content">
+      <div class="msg-header"><span class="msg-name">APEX</span></div>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div></div>`;
+  chatArea.appendChild(wrap);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return id;
+}
+
+function renderError(msg) {
+  const chatArea = document.getElementById('chatArea');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+  wrap.innerHTML = `<div class="message assistant">
+    <div class="msg-avatar" style="background:var(--red)">!</div>
+    <div class="msg-content">
+      <div class="msg-header"><span class="msg-name" style="color:var(--red)">Erreur</span></div>
+      <div class="msg-body" style="color:var(--red)">${escHtml(msg)}</div>
+    </div></div>`;
+  chatArea.appendChild(wrap);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ══════════════════════════════════════
+//  MARKDOWN FORMATTER
+// ══════════════════════════════════════
+function formatMd(text) {
+  // Code blocks
+  let codeIdx = 0;
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const l = lang.trim() || 'code';
+    const cid = 'cb-' + Date.now() + '-' + (codeIdx++);
+    const canArtifact = capabilities.artifact && ['html','python','javascript','js','css','json','markdown','md','sql','bash','sh','typescript','ts','php','java','cpp','c','rust','go'].includes(l.toLowerCase());
+    const artifactBtnHtml = canArtifact
+      ? `<button class="artifact-btn" onclick="createArtifact('${l}','${cid}')"><i class="fas fa-download"></i> Artefact</button>`
+      : '';
+    return `<div class="code-block">
+      <div class="code-header">
+        <span class="code-lang">${l}</span>
+        <div class="code-header-actions">
+          ${artifactBtnHtml}
+          <button class="copy-btn" onclick="copyCode('${cid}')"><i class="fas fa-copy"></i> Copier</button>
+        </div>
+      </div>
+      <div class="code-body" id="${cid}">${escHtml(code.trim())}</div>
+    </div>`;
+  });
+
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  text = text.replace(/\*\*\*(.+?)\*\*\*/gs, '<strong><em>$1</em></strong>');
+  text = text.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  text = text.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+  text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  text = text.replace(/(<li>[\s\S]*?<\/li>)+/g, s => `<ul>${s}</ul>`);
+
+  // Tables
+  text = text.replace(/\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/g, (_, header, rows) => {
+    const ths = header.split('|').filter(s=>s.trim()).map(s=>`<th>${s.trim()}</th>`).join('');
+    const trs = rows.trim().split('\n').map(r=>{
+      const tds = r.split('|').filter(s=>s.trim()).map(s=>`<td>${s.trim()}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+
+  // Paragraphs
+  text = text.split(/\n{2,}/).map(p => {
+    if (/^<(h[1-3]|ul|ol|li|blockquote|div|table)/.test(p.trim())) return p;
+    return `<p>${p.replace(/\n/g,'<br>')}</p>`;
+  }).join('');
+
+  return text;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════
+//  ARTIFACTS
+// ══════════════════════════════════════
+const EXTS = { html:'html',python:'py',javascript:'js',js:'js',css:'css',json:'json',markdown:'md',md:'md',sql:'sql',bash:'sh',sh:'sh',typescript:'ts',ts:'ts',php:'php',java:'java',cpp:'cpp',c:'c',rust:'rs',go:'go',txt:'txt' };
+const ICONS = { html:'html',python:'python',js:'js',javascript:'js',css:'txt',json:'json',markdown:'md',md:'md',txt:'txt' };
+
+function createArtifact(lang, codeId) {
+  const codeEl = document.getElementById(codeId);
+  if (!codeEl) return;
+  const code = codeEl.innerText;
+  const ext = EXTS[lang.toLowerCase()] || 'txt';
+  const name = `apex_${lang}_${Date.now()}.${ext}`;
+  addArtifact({ name, lang: lang.toLowerCase(), code, created: Date.now() });
+  showToast('Artefact créé ✓', 'green');
+  if (!artifactPanelOpen) toggleArtifactPanel();
+}
+
+function extractAndSaveArtifacts(text) {
+  if (!capabilities.artifact) return;
+  const regex = /```(\w+)\n([\s\S]*?)```/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const lang = match[1].toLowerCase();
+    const code = match[2].trim();
+    const ext = EXTS[lang] || null;
+    if (!ext) continue;
+    if (code.split('\n').length < 8) continue; // skip tiny snippets
+    const name = `apex_${lang}_${Date.now()}_${Math.floor(Math.random()*1000)}.${ext}`;
+    addArtifact({ name, lang, code, created: Date.now() });
+  }
+}
+
+function addArtifact(artifact) {
+  // avoid duplicates by checking code
+  if (artifacts.some(a => a.code === artifact.code)) return;
+  artifacts.unshift(artifact);
+  const conv = getCurrentConv();
+  if (conv) { conv.artifacts = artifacts; saveConversations(); }
+  renderArtifacts();
+}
+
+function renderArtifacts() {
+  const list = document.getElementById('artifactList');
+  const empty = document.getElementById('artifactEmpty');
+  if (!list) return;
+
+  // Remove old cards
+  list.querySelectorAll('.artifact-card').forEach(c => c.remove());
+
+  if (artifacts.length === 0) {
+    if (empty) empty.style.display = 'flex';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  artifacts.forEach((art, i) => {
+    const card = document.createElement('div');
+    card.className = 'artifact-card';
+    const iconClass = ICONS[art.lang] || 'txt';
+    const preview = art.code.slice(0, 150);
+    card.innerHTML = `
+      <div class="ac-top">
+        <div class="ac-icon ${iconClass}">${getFileIcon(art.lang)}</div>
+        <div>
+          <div class="ac-name">${escHtml(art.name)}</div>
+          <div class="ac-time">${new Date(art.created).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+      <div class="ac-preview">${escHtml(preview)}${art.code.length > 150 ? '…' : ''}</div>
+      <div class="ac-actions">
+        <button class="ac-btn prev" onclick="previewArtifact(${i})"><i class="fas fa-eye"></i> Aperçu</button>
+        <button class="ac-btn dl" onclick="downloadArtifact(${i})"><i class="fas fa-download"></i> Télécharger</button>
+        <button class="ac-btn del" onclick="deleteArtifact(${i})"><i class="fas fa-trash"></i></button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function getFileIcon(lang) {
+  const map = { html:'🌐', python:'🐍', js:'⚡', javascript:'⚡', css:'🎨', json:'{}', markdown:'📝', md:'📝', sql:'🗄️', bash:'💲', sh:'💲', typescript:'📘', ts:'📘', php:'🐘', java:'☕', cpp:'⚙️', c:'⚙️', rust:'🦀', go:'🐹', txt:'📄' };
+  return map[lang] || '📄';
+}
+
+function downloadArtifact(i) {
+  const art = artifacts[i];
+  if (!art) return;
+  const blob = new Blob([art.code], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = art.name; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Téléchargement démarré ✓', 'green');
+}
+
+function deleteArtifact(i) {
+  if (!confirm('Supprimer cet artefact ?')) return;
+  artifacts.splice(i, 1);
+  const conv = getCurrentConv();
+  if (conv) { conv.artifacts = artifacts; saveConversations(); }
+  renderArtifacts();
+}
+
+function previewArtifact(i) {
+  const art = artifacts[i];
+  if (!art) return;
+  document.getElementById('previewName').textContent = art.name;
+  document.getElementById('previewContent').textContent = art.code;
+  document.getElementById('previewOverlay').classList.remove('hidden');
+}
+
+function closePreview(e) { if (e.target === document.getElementById('previewOverlay')) closePreviewDirect(); }
+function closePreviewDirect() { document.getElementById('previewOverlay').classList.add('hidden'); }
+
+// ══════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════
+function isMobile() { return window.innerWidth <= 768; }
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const overlay = document.getElementById('sbOverlay');
+  const reopen = document.getElementById('sbReopen');
+  if (isMobile()) {
+    sidebarOpen = !sidebarOpen;
+    sb.classList.toggle('mobile-open', sidebarOpen);
+    overlay.classList.toggle('visible', sidebarOpen);
+  } else {
+    sidebarOpen = !sidebarOpen;
+    sb.classList.toggle('collapsed', !sidebarOpen);
+    reopen.classList.toggle('visible', !sidebarOpen);
+  }
+}
+
+function toggleArtifactPanel() {
+  artifactPanelOpen = !artifactPanelOpen;
+  document.getElementById('artifactPanel').classList.toggle('hidden', !artifactPanelOpen);
+  document.getElementById('apBtn').classList.toggle('active', artifactPanelOpen);
+  if (artifactPanelOpen) renderArtifacts();
+}
+
+function clearCurrentChat() {
+  if (!confirm('Effacer cette conversation ?')) return;
+  const conv = getCurrentConv();
+  if (!conv) return;
+  conv.messages = [];
+  conv.artifacts = [];
+  conv.name = 'Nouvelle conversation';
+  artifacts = [];
+  saveConversations();
+  loadConversation(currentConvId);
+}
+
+function copyCode(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    const btn = el.previousElementSibling?.querySelector('.copy-btn');
+    if (btn) { const o = btn.innerHTML; btn.innerHTML = '<i class="fas fa-check"></i> Copié !'; setTimeout(() => btn.innerHTML = o, 1500); }
+  });
+}
+
+function copyReply(btn) {
+  const body = btn.closest('.msg-content')?.querySelector('.msg-body');
+  if (!body) return;
+  navigator.clipboard.writeText(body.innerText).then(() => {
+    const o = btn.innerHTML; btn.innerHTML = '<i class="fas fa-check"></i> Copié !';
+    setTimeout(() => btn.innerHTML = o, 1500);
+  });
+}
+
+async function regenLast() {
+  const conv = getCurrentConv();
+  if (!conv || conv.messages.length < 2) return;
+  // Remove last assistant message
+  if (conv.messages[conv.messages.length-1].role === 'assistant') conv.messages.pop();
+  // Remove from DOM
+  const chatArea = document.getElementById('chatArea');
+  chatArea.lastElementChild?.remove();
+  // Resend
+  const lastUser = conv.messages[conv.messages.length-1];
+  if (!lastUser) return;
+  document.getElementById('sendBtn').disabled = true;
+  const typingId = addTyping();
+  try {
+    const reply = await callGemini(buildContents(conv.messages, lastUser.content), buildSystemPrompt());
+    document.getElementById(typingId)?.remove();
+    conv.messages.push({ role: 'assistant', content: reply });
+    renderMessage('assistant', reply, true);
+    extractAndSaveArtifacts(reply);
+    saveConversations();
+  } catch(e) {
+    document.getElementById(typingId)?.remove();
+    renderError(e.message);
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function fillInput(text) {
+  const inp = document.getElementById('userInput');
+  inp.value = text;
+  autoResize(inp);
+  inp.focus();
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+}
+
+function buildWelcome() {
+  const div = document.createElement('div');
+  div.className = 'welcome'; div.id = 'welcomeScreen';
+  div.innerHTML = `
+    <div class="welcome-logo">⚡</div>
+    <div><h1>Station APEX</h1><p style="margin-top:6px">Interface IA propulsée par <strong>Google Gemini</strong>. Entrez votre clé API pour commencer.</p></div>
+    <div class="cap-row" style="justify-content:center">
+      <span class="cap-badge on">🌐 Web Search</span>
+      <span class="cap-badge on">💻 Code</span>
+      <span class="cap-badge on">📄 Artefacts</span>
+      <span class="cap-badge on">🖼️ Vision</span>
+      <span class="cap-badge on">📊 Analyse</span>
+    </div>
+    <div class="suggestions">
+      <div class="sug-card" onclick="fillInput('Écris un script Python pour analyser les logs Apache et détecter des anomalies')"><span class="si">💻</span>Script d'analyse de logs</div>
+      <div class="sug-card" onclick="fillInput('Crée une page HTML responsive pour un portfolio de développeur')"><span class="si">🌐</span>Page portfolio HTML</div>
+      <div class="sug-card" onclick="fillInput('Quelles sont les dernières actualités en cybersécurité ?')"><span class="si">🔒</span>Actu cybersécurité</div>
+      <div class="sug-card" onclick="fillInput('Explique-moi le machine learning avec des exemples concrets')"><span class="si">🧠</span>Cours machine learning</div>
+    </div>`;
+  return div;
+}
+
+function showToast(msg, type='green') {
+  const t = document.createElement('div');
+  const color = type === 'green' ? 'var(--green)' : 'var(--red)';
+  t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid ${color};color:${color};padding:8px 18px;border-radius:8px;font-size:13px;z-index:999;pointer-events:none;transition:opacity .3s`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2200);
+}
+
+// KEYBOARD
+document.getElementById('userInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+window.onload = () => document.getElementById('userInput').focus();
+</script>
+</body>
+</html>
 
